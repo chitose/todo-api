@@ -1,55 +1,147 @@
-import { CommentModel, COMMENTS_TABLE, PROJECT_COMMENTS_TABLE, ProjectCommentsModel } from '@daos/models';
-import { Op } from 'sequelize/dist';
+import { CommentModel, COMMENTS_TABLE, USER_PROJECTS_TABLE } from '@daos/models';
+import { Op, QueryTypes } from 'sequelize';
+
+import { IProjectRepository } from './project-repo';
+import { ITaskRepository } from './task-repo';
 
 export interface ICommentsRepository {
     /**
-     * Add comment to project
-     * @param projId
-     * @param userId 
-     * @param comments 
+     * Add comment to project.
      */
-    addProjectComment(projId: number, userId: string, comments: string): Promise<CommentModel[]>;
+    addProjectComment(userId: string, projId: number, comments: string): Promise<CommentModel>;
 
     /**
-     * Remove comment and its association records
-     * @param cmtId 
+     * Remove project comment
      */
-    removeComment(cmtId: number): Promise<void>;
+    removeProjectComment(userId: string, projectId: number, cmtId: number): Promise<void>
+
+    /**
+     * Gets project comments
+     */
+    getProjectComments(userId: string, projectId: number): Promise<CommentModel[]>;
+
+    /**
+     * Add comment to task
+     */
+    addTaskComment(userId: string, projId: number, taskId: number, comments: string): Promise<CommentModel>;
+
+    /**
+     * Remove a comment from task.
+     */
+    removeTaskComment(userId: string, taskId: number, cmtId: number): Promise<void>;
+
+    /**
+     * Get task comments.
+     */
+    getTaskComments(userId: string, projId: number, taskId: number): Promise<CommentModel[]>;
 }
 
 class CommentsRepository implements ICommentsRepository {
-    async addProjectComment(projId: number, userId: string, comments: string): Promise<CommentModel[]> {
-        const cmt = await CommentModel.create({
-            userId: userId,
-            comments: comments
-        });
+    constructor(private projectRepo: IProjectRepository, private taskRepo: ITaskRepository) {
 
-        await ProjectCommentsModel.create({
-            commentId: cmt.id,
-            projectId: projId
-        });
+    }
 
-        return CommentModel.sequelize?.query(`
-        SELECT c.* from ${COMMENTS_TABLE} c left join ${PROJECT_COMMENTS_TABLE} pc on c.id = pc.commentId
-        WHERE pc.projectId = :projId
+    async addTaskComment(userId: string, projId: number, taskId: number, comments: string): Promise<CommentModel> {
+        const task = await this.taskRepo.getTask(userId, taskId);
+        if (task) {
+            throw new Error('Task not found');
+        }
+
+        return await CommentModel.create({
+            projectId: projId,
+            taskId: taskId,
+            commentDate: new Date(),
+            comments: comments,
+            userId: userId
+        });
+    }
+
+    async removeTaskComment(userId: string, taskId: number, cmtId: number): Promise<void> {
+        const task = await this.taskRepo.getTask(userId, taskId);
+        if (!task) {
+            throw new Error('Task not found');
+        }
+
+        await CommentModel.destroy({
+            where: {
+                [Op.and]: {
+                    id: {
+                        [Op.eq]: cmtId
+                    },
+                    taskId: {
+                        [Op.eq]: taskId
+                    }
+                }
+            }
+        });
+    }
+
+    async getTaskComments(userId: string, taskId: number): Promise<CommentModel[]> {
+        return await CommentModel.sequelize?.query(`
+        SELECT c.* from ${COMMENTS_TABLE} c left join ${USER_PROJECTS_TABLE} up ON c.projectId = up.projectId AND up.userId = :userId
+        WHERE c.taskId = :taskId
+        `,
+            {
+                type: QueryTypes.SELECT,
+                model: CommentModel,
+                mapToModel: true,
+                replacements: {
+                    taskId,
+                    userId
+                }
+            }) as CommentModel[];
+    }
+
+    async getProjectComments(userId: string, projectId: number): Promise<CommentModel[]> {
+        return await CommentModel.sequelize?.query(`
+        SELECT c.* from ${COMMENTS_TABLE} left join ${USER_PROJECTS_TABLE} up on c.projectId = up.projectId AND up.userId = :userId
+        WHERE c.projectId = :projectId        
         `, {
             model: CommentModel,
             mapToModel: true,
+            type: QueryTypes.SELECT,
             replacements: {
-                projId: projId
+                userId,
+                projectId
             }
-        }) as Promise<CommentModel[]>;
+        }) as CommentModel[];
     }
 
-    async removeComment(cmtId: number): Promise<void> {
+    async addProjectComment(userId: string, projId: number, comments: string): Promise<CommentModel> {
+        const p = await this.projectRepo.get(userId, projId);
+        if (!p) {
+            throw new Error('Project not found');
+        }
+
+        return await CommentModel.create({
+            userId: userId,
+            projectId: projId,
+            commentDate: new Date(),
+            comments: comments
+        });
+    }
+
+    async removeProjectComment(userId: string, projectId: number, cmtId: number): Promise<void> {
+        const p = await this.projectRepo.get(userId, projectId);
+        if (!p) {
+            throw new Error('Project not found');
+        }
+
         await CommentModel.destroy({
             where: {
-                id: {
-                    [Op.eq]: cmtId
+                [Op.and]: {
+                    id: {
+                        [Op.eq]: cmtId
+                    },
+                    projectId: {
+                        [Op.eq]: projectId
+                    }
                 }
             }
         });
     }
 }
 
-export default new CommentsRepository();
+export function createCommentsRepository(projectRepo: IProjectRepository, taskRepo: ITaskRepository): ICommentsRepository {
+    return new CommentsRepository(projectRepo, taskRepo);
+}

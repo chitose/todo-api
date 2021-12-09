@@ -1,6 +1,8 @@
 import db from '@daos/sqlite3/sqlite-dao';
 import { DataTypes, Model, Optional } from 'sequelize';
 
+import { autoIncrementIdColumn } from './columns';
+
 export enum ViewType {
     List = 1,
     Dashboard = 2
@@ -10,6 +12,7 @@ export interface IProjectAttribute {
     id: number;
     name: string;
     view: ViewType;
+    archived: boolean;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -20,18 +23,14 @@ export class ProjectModel extends Model<IProjectAttribute, IProjectCreationAttri
     public id!: number;
     public name!: string;
     public view!: ViewType;
+    public archived!: boolean;
 }
 
 export const PROJECTS_TABLE = 'projects';
 
 ProjectModel.init(
     {
-        id: {
-            type: DataTypes.INTEGER,
-            allowNull: false,
-            primaryKey: true,
-            autoIncrement: true,
-        },
+        id: autoIncrementIdColumn<ProjectModel>(),
         name: {
             type: DataTypes.STRING(255),
             allowNull: false
@@ -39,6 +38,11 @@ ProjectModel.init(
         view: {
             type: DataTypes.SMALLINT,
             allowNull: false
+        },
+        archived: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false
         }
     }, {
     tableName: PROJECTS_TABLE,
@@ -46,6 +50,8 @@ ProjectModel.init(
     indexes: [
         {
             fields: ['name']
+        }, {
+            fields: ['archived']
         }
     ]
 });

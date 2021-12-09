@@ -1,8 +1,9 @@
-// Set the env file, must be first
 import dotenv from 'dotenv';
 
+
+// Set the env file, must be first
 const result2 = dotenv.config({
-    path: `./src/pre-start/env/test.env`,
+    path: './src/pre-start/env/test.env',
 });
 
 if (result2.error) {
