@@ -1,4 +1,5 @@
-import { CommentModel, COMMENTS_TABLE, USER_PROJECTS_TABLE } from '@daos/models';
+import { CommentModel, COMMENTS_TABLE, ICommentAttribute, IUserProjectsAttribute, USER_PROJECTS_TABLE } from '@daos/models';
+import { getKey } from '@shared/utils';
 import { Op, QueryTypes } from 'sequelize';
 
 import { IProjectRepository } from './project-repo';
@@ -78,8 +79,10 @@ class CommentsRepository implements ICommentsRepository {
 
     async getTaskComments(userId: string, taskId: number): Promise<CommentModel[]> {
         return await CommentModel.sequelize?.query(`
-        SELECT c.* from ${COMMENTS_TABLE} c left join ${USER_PROJECTS_TABLE} up ON c.projectId = up.projectId AND up.userId = :userId
-        WHERE c.taskId = :taskId
+        SELECT c.* from ${COMMENTS_TABLE} c left join ${USER_PROJECTS_TABLE} up
+        ON c.${getKey<ICommentAttribute>('projectId')} = up.${getKey<IUserProjectsAttribute>('projectId')}
+        AND up.${getKey<IUserProjectsAttribute>('userId')} = : userId
+        WHERE c.${getKey<ICommentAttribute>('taskId')} = : taskId
         `,
             {
                 type: QueryTypes.SELECT,
@@ -94,9 +97,11 @@ class CommentsRepository implements ICommentsRepository {
 
     async getProjectComments(userId: string, projectId: number): Promise<CommentModel[]> {
         return await CommentModel.sequelize?.query(`
-        SELECT c.* from ${COMMENTS_TABLE} left join ${USER_PROJECTS_TABLE} up on c.projectId = up.projectId AND up.userId = :userId
-        WHERE c.projectId = :projectId        
-        `, {
+        SELECT c.* from ${COMMENTS_TABLE} left join ${USER_PROJECTS_TABLE} up
+        ON c.${getKey<ICommentAttribute>('projectId')} = up.${getKey<IUserProjectsAttribute>('projectId')}
+        AND up.${getKey<IUserProjectsAttribute>('userId')} = : userId
+        WHERE c.${getKey<ICommentAttribute>('projectId')} = : projectId
+    `, {
             model: CommentModel,
             mapToModel: true,
             type: QueryTypes.SELECT,

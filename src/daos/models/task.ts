@@ -23,11 +23,13 @@ export interface ITaskAttribute {
     assignTo?: string;
     sectionId?: number;
     completed: boolean;
+    taskOrder: number;
 }
 
 export interface ITaskCreationAttributes extends Optional<ITaskAttribute, 'id'> { }
 
 export class TaskModel extends Model<ITaskAttribute, ITaskCreationAttributes> implements ITaskAttribute {
+    public taskOrder!: number;
     public id!: number;
     public title!: string;
     public description!: string;
@@ -63,6 +65,10 @@ TaskModel.init(
         },
         completed: {
             type: DataTypes.BOOLEAN,
+            allowNull: false
+        },
+        taskOrder: {
+            type: DataTypes.INTEGER,
             allowNull: false
         },
         parentTaskId: {

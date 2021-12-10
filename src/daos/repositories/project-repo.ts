@@ -1,10 +1,13 @@
 import {
+    IProjectAttribute,
     IProjectCreationAttributes,
+    IUserProjectsAttribute,
     ProjectModel,
     PROJECTS_TABLE,
     USER_PROJECTS_TABLE,
     UserProjectsModel,
 } from '@daos/models';
+import { getKey } from '@shared/utils';
 import { QueryTypes } from 'sequelize';
 
 export interface IProjectRepository {
@@ -53,8 +56,9 @@ class ProjectRepository implements IProjectRepository {
     async getUserProjects(userId: string): Promise<ProjectModel[]> {
         return await ProjectModel.sequelize?.query(`
             SELECT p.*
-            FROM ${PROJECTS_TABLE} p left join ${USER_PROJECTS_TABLE} up on p.id = up.projectId
-            where up.userId = :userId
+            FROM ${PROJECTS_TABLE} p LEFT JOIN ${USER_PROJECTS_TABLE} up
+            ON p.${getKey<IProjectAttribute>('id')} = up.${getKey<IUserProjectsAttribute>('projectId')}
+            WHERE up.${getKey<IUserProjectsAttribute>('userId')} = :userId
         `, {
             model: ProjectModel,
             mapToModel: true,
@@ -91,8 +95,10 @@ class ProjectRepository implements IProjectRepository {
     async get(userId: string, projId: number): Promise<ProjectModel | null> {
         const proj = await ProjectModel.sequelize?.query(`
         SELECT p.* 
-        FROM ${PROJECTS_TABLE} p left join ${USER_PROJECTS_TABLE} up on p.id = up.projectId
-        WHERE up.userId = :userId AND up.projectId = :projectId
+        FROM ${PROJECTS_TABLE} p
+        LEFT JOIN ${USER_PROJECTS_TABLE} up on p.${getKey<IProjectAttribute>('id')} = up.${getKey<IUserProjectsAttribute>('projectId')}
+        WHERE up.${getKey<IUserProjectsAttribute>('userId')} = :userId
+        AND up.${getKey<IUserProjectsAttribute>('projectId')} = :projectId
         `, {
             model: ProjectModel,
             mapToModel: true,

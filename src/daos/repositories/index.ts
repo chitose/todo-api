@@ -1,6 +1,7 @@
 import { createCommentsRepository, ICommentsRepository } from './comment-repo';
 import { createLabelRepository, ILabelRepository } from './label-repo';
 import ProjectRepository, { IProjectRepository } from './project-repo';
+import { createSectionRepository, ISectionRepository } from './section-repo';
 import { createTaskRepository, ITaskRepository } from './task-repo';
 import UserRepository, { IUserRepository } from './user-repo';
 
@@ -22,4 +23,8 @@ export function getTaskRepository(): ITaskRepository {
 
 export function getLabelRepository(): ILabelRepository {
     return createLabelRepository(getTaskRepository());
+}
+
+export function getSectionRepository(): ISectionRepository {
+    return createSectionRepository(getProjectRepository());
 }

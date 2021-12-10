@@ -1,4 +1,16 @@
-import { LABEL_TABLE, LabelModel, TASK_LABELS_TABLE, TASK_TABLE, TaskLabelModel, USER_PROJECTS_TABLE } from '@daos/models';
+import {
+    ILabelAttribute,
+    ITaskAttribute,
+    ITaskLabelAttribute,
+    IUserProjectsAttribute,
+    LABEL_TABLE,
+    LabelModel,
+    TASK_LABELS_TABLE,
+    TASK_TABLE,
+    TaskLabelModel,
+    USER_PROJECTS_TABLE,
+} from '@daos/models';
+import { getKey } from '@shared/utils';
 import { Op } from 'sequelize';
 
 import { ITaskRepository } from './task-repo';
@@ -61,10 +73,12 @@ class LabelRepository implements ILabelRepository {
     async getTaskLabels(userId: string, taskId: number): Promise<LabelModel[]> {
         return await LabelModel.sequelize?.query(`
         SELECT p.*
-        FROM ${LABEL_TABLE} l left join ${TASK_LABELS_TABLE} tl up on l.id = tl.labelId
-        left join ${TASK_TABLE} t on t.id = tl.taskId
-        left jion ${USER_PROJECTS_TABLE} up on t.projectId = up.projectId AND up.userId =:userId
-        WHERE tl.taskId = :taskId
+        FROM ${LABEL_TABLE} l 
+        LEFT JOIN ${TASK_LABELS_TABLE} tl up ON l.${getKey<ILabelAttribute>('id')} = tl.${getKey<ITaskLabelAttribute>('labelId')}
+        LEFT JOIN ${TASK_TABLE} t ON t.${getKey<ITaskAttribute>('id')} = tl.${getKey<ITaskLabelAttribute>('taskId')}
+        LEFT JOIN ${USER_PROJECTS_TABLE} up ON t.${getKey<ITaskAttribute>('projectId')} = up.${getKey<IUserProjectsAttribute>('projectId')}
+            AND up.${getKey<IUserProjectsAttribute>('userId')} =:userId
+        WHERE tl.${getKey<ITaskLabelAttribute>('taskId')} = :taskId
         `, {
             model: LabelModel,
             mapToModel: true,

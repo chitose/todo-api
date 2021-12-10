@@ -1,12 +1,29 @@
-import { ITaskCreationAttributes, TASK_TABLE, TaskModel, TaskPriority, USER_PROJECTS_TABLE } from '@daos/models';
-import { QueryTypes } from 'sequelize/dist';
+import {
+    ITaskAttribute,
+    ITaskCreationAttributes,
+    IUserProjectsAttribute,
+    TASK_TABLE,
+    TaskModel,
+    TaskPriority,
+    USER_PROJECTS_TABLE,
+} from '@daos/models';
+import { getKey } from '@shared/utils';
+import { Op, QueryTypes } from 'sequelize';
 
 import { IProjectRepository } from './project-repo';
 
 export interface ITaskRepository {
+    getTasks(userId: string, projectId: number): Promise<TaskModel[]>;
+
+    moveSectionTasks(userId: string, projectId: number, sectId: number, targetProjectId: number): Promise<void>;
+
+    moveProjectTask(userId: string, projectId: number, targetProjectId: number): Promise<void>;
+
     getTask(userId: string, taskId: number): Promise<TaskModel>;
 
     createTask(userId: string, taskProp: ITaskCreationAttributes): Promise<TaskModel>;
+
+    changeOrder(userId: string, taskId: number, order: number): Promise<TaskModel>;
 
     updateTask(userId: string, taskId: number, taskProp: ITaskCreationAttributes): Promise<TaskModel>;
 
@@ -27,6 +44,65 @@ export interface ITaskRepository {
 
 class TaskRepository implements ITaskRepository {
     constructor(private projectRepo: IProjectRepository) { }
+    async getTasks(userId: string, projectId: number): Promise<TaskModel[]> {
+        return await TaskModel.sequelize?.query(`
+        SELECT t.* FROM ${TASK_TABLE} t
+        LEFT JOIN ${USER_PROJECTS_TABLE} up
+        ON t.${getKey<ITaskAttribute>('projectId')} = up.${getKey<IUserProjectsAttribute>('projectId')}
+        WHERE t.${getKey<ITaskAttribute>('projectId')} = :projectId
+        AND up.${getKey<IUserProjectsAttribute>('userId')} = :userId
+        `,
+            {
+                type: QueryTypes.SELECT,
+                model: TaskModel,
+                mapToModel: true,
+                replacements: {
+                    userId,
+                    projectId
+                }
+            }) as TaskModel[];
+    }
+
+    async moveSectionTasks(userId: string, projectId: number, sectId: number, targetProjectId: number): Promise<void> {
+        const proj = await this.projectRepo.get(userId, projectId);
+        const targetProj = await this.projectRepo.get(userId, targetProjectId);
+        if (!proj || !targetProj) {
+            throw new Error('Project not found or not project callaborator');
+        }
+
+        await TaskModel.update({
+            projectId: targetProjectId
+        }, {
+            where: {
+                [Op.and]: {
+                    projectId: { [Op.eq]: projectId },
+                    sectionId: { [Op.eq]: sectId }
+                }
+            }
+        });
+    }
+
+    async moveProjectTask(userId: string, projectId: number, targetProjectId: number): Promise<void> {
+        const proj = await this.projectRepo.get(userId, projectId);
+        const targetProj = await this.projectRepo.get(userId, targetProjectId);
+        if (!proj || !targetProj) {
+            throw new Error('Project not found or not project callaborator');
+        }
+
+        await TaskModel.update({
+            projectId: targetProjectId
+        }, {
+            where: {
+                [Op.and]: {
+                    projectId: { [Op.eq]: projectId }
+                }
+            }
+        });
+    }
+
+    async changeOrder(userId: string, taskId: number, order: number): Promise<TaskModel> {
+        return await this.updateTask(userId, taskId, { taskOrder: order });
+    }
 
     async getTask(userId: string, taskId: number): Promise<TaskModel> {
         return (await TaskModel.sequelize?.query(`
@@ -62,7 +138,7 @@ class TaskRepository implements ITaskRepository {
             throw new Error('Task not found');
         }
 
-        const { title, description, assignTo, dueDate, priority, parentTaskId, projectId } = taskProp;
+        const { title, description, assignTo, dueDate, priority, parentTaskId, projectId, taskOrder } = taskProp;
         const updateProp = {} as ITaskCreationAttributes;
 
         if (title !== undefined) {
@@ -91,6 +167,10 @@ class TaskRepository implements ITaskRepository {
 
         if (projectId !== undefined) {
             updateProp.projectId = projectId;
+        }
+
+        if (taskOrder !== undefined) {
+            updateProp.taskOrder = taskOrder;
         }
 
         await TaskModel.update(updateProp,
