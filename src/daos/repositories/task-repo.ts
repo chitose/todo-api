@@ -173,7 +173,7 @@ class TaskRepository implements ITaskRepository {
             taskProp.taskOrder = taskOrder + 1;
         }
 
-        return await TaskModel.create(taskProp);
+        return TaskModel.create(taskProp);
     }
 
     async updateTask(userId: string, taskId: number, taskProp: Partial<ITaskCreationAttributes>): Promise<TaskModel> {
@@ -242,19 +242,19 @@ class TaskRepository implements ITaskRepository {
     }
 
     async assignTask(userId: string, taskId: number, assignedToUserId: string): Promise<TaskModel> {
-        return await this.updateTask(userId, taskId, { assignTo: assignedToUserId });
+        return this.updateTask(userId, taskId, { assignTo: assignedToUserId });
     }
 
     async setTaskPriority(userId: string, taskId: number, priority: TaskPriority): Promise<TaskModel> {
-        return await this.updateTask(userId, taskId, { priority: priority });
+        return this.updateTask(userId, taskId, { priority: priority });
     }
 
     async completeTask(userId: string, taskId: number): Promise<TaskModel> {
-        return await this.updateTask(userId, taskId, { completed: true });
+        return this.updateTask(userId, taskId, { completed: true });
     }
 
     async setTaskDueDate(userId: string, taskId: number, dueDate: Date): Promise<TaskModel> {
-        return await this.updateTask(userId, taskId, { dueDate: dueDate });
+        return this.updateTask(userId, taskId, { dueDate: dueDate });
     }
 
     async moveToProject(userId: string, taskId: number, projectId: number): Promise<void> {
@@ -268,7 +268,7 @@ class TaskRepository implements ITaskRepository {
         }
         // using destructuring will not work becaus task is proxy object
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        return await this.createTask(userId, {
+        return this.createTask(userId, {
             title: task.title,
             description: task.description,
             completed: task.completed,

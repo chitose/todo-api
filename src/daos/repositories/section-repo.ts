@@ -2,7 +2,7 @@ import { ISectionAttribute, ISectionCreationAttribute, SECTION_TABLE, SectionMod
 import { getKey } from '@shared/utils';
 import { Op, QueryTypes } from 'sequelize/dist';
 
-import { IUserProjectsAttribute, TaskModel, USER_PROJECTS_TABLE } from '..';
+import { IUserProjectsAttribute, USER_PROJECTS_TABLE } from '..';
 import { IProjectRepository } from './project-repo';
 import { ITaskRepository } from './task-repo';
 
@@ -174,37 +174,46 @@ class SectionRepository implements ISectionRepository {
         const t = await SectionModel.sequelize?.transaction();
         try {
             const newSection = await this.addSection(userId, projId, section.name);
-            const rootTasks = section.tasks?.filter(t => !t.parentTaskId) as TaskModel[];
-            const childTasks = section.tasks?.filter(t => t.parentTaskId) as TaskModel[];
+            let tasks = (section.tasks || []).slice();
             const parentTaskMap = new Map<number, number>();
-            for (const t of rootTasks) {
+
+            const parentTasks = tasks.filter(x => !x.parentTaskId);
+            tasks = tasks.filter(x => parentTasks.indexOf(x) < 0);
+
+            for (const task of parentTasks) {
                 const duplicateRootTask = await this.taskRepo.createTask(userId, {
-                    title: t.title,
-                    description: t.description,
-                    completed: t.completed,
-                    projectId: t.projectId,
-                    assignTo: t.assignTo,
-                    dueDate: t.dueDate,
-                    priority: t.priority,
-                    taskOrder: t.taskOrder,
+                    title: task.title,
+                    description: task.description,
+                    completed: task.completed,
+                    projectId: task.projectId,
+                    assignTo: task.assignTo,
+                    dueDate: task.dueDate,
+                    priority: task.priority,
+                    taskOrder: task.taskOrder,
                     sectionId: newSection.id
                 });
-                parentTaskMap.set(t.id, duplicateRootTask.id);
+                parentTaskMap.set(task.id, duplicateRootTask.id);
             }
 
-            for (const t of childTasks) {
-                await this.taskRepo.createTask(userId, {
-                    title: t.title,
-                    description: t.description,
-                    completed: t.completed,
-                    projectId: t.projectId,
-                    assignTo: t.assignTo,
-                    dueDate: t.dueDate,
-                    priority: t.priority,
-                    taskOrder: t.taskOrder,
-                    sectionId: newSection.id,
-                    parentTaskId: parentTaskMap.get(t.parentTaskId!)
-                });
+            while (tasks.length > 0) {
+                // find all the child task
+                const childTasks = tasks.filter(x => parentTaskMap.get(x.parentTaskId!));
+                tasks = tasks.filter(x => childTasks.indexOf(x) < 0);
+                for (const task of childTasks) {
+                    const duplicateRootTask = await this.taskRepo.createTask(userId, {
+                        title: task.title,
+                        description: task.description,
+                        completed: task.completed,
+                        projectId: task.projectId,
+                        assignTo: task.assignTo,
+                        dueDate: task.dueDate,
+                        priority: task.priority,
+                        taskOrder: task.taskOrder,
+                        sectionId: newSection.id,
+                        parentTaskId: parentTaskMap.get(task.parentTaskId!)
+                    });
+                    parentTaskMap.set(task.id, duplicateRootTask.id);
+                }
             }
 
             await t?.commit();

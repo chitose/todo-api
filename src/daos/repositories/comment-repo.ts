@@ -118,7 +118,7 @@ class CommentsRepository implements ICommentsRepository {
             throw new Error('Project not found');
         }
 
-        return await CommentModel.create({
+        return CommentModel.create({
             userId: userId,
             projectId: projId,
             commentDate: new Date(),

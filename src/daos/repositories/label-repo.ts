@@ -28,7 +28,7 @@ class LabelRepository implements ILabelRepository {
     }
 
     async createLabel(userId: string, name: string): Promise<LabelModel> {
-        return await LabelModel.create({
+        return LabelModel.create({
             title: name,
             userId
         });
@@ -46,7 +46,7 @@ class LabelRepository implements ILabelRepository {
     }
 
     async search(userId: string, text: string): Promise<LabelModel[]> {
-        return await LabelModel.findAll({
+        return LabelModel.findAll({
             where: {
                 [Op.and]: {
                     title: {
