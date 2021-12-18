@@ -349,8 +349,17 @@ describe('ProjectRouter - Sections', () => {
                             sectionId: section.id,
                             parentTaskId: (res2.body as ITaskAttribute).id,
                             completed: false
-                        }).end(() => {
-                            done();
+                        }).end((err3, res3) => {
+                            callAddSectionTaskApi(user1.auth!, project.id, section.id, {
+                                title: 'Task 1 grand child',
+                                description: 'Task 1 grand child description',
+                                projectId: project.id,
+                                sectionId: section.id,
+                                parentTaskId: (res3.body as ITaskAttribute).id,
+                                completed: false
+                            }).end(() => {
+                                done();
+                            });
                         });
                     });
                 });
@@ -362,12 +371,13 @@ describe('ProjectRouter - Sections', () => {
                 expect(res.status).toBe(StatusCodes.CREATED);
                 const section = res.body as SectionModel;
                 expect(section.tasks).toBeDefined();
-                expect(section.tasks?.length).toBe(2);
-                const cTask = section.tasks?.find(t => t.parentTaskId);
+                expect(section.tasks?.length).toBe(3);
                 const pTask = section.tasks?.find(t => !t.parentTaskId);
+                const cTask = section.tasks?.find(t => t.parentTaskId === pTask?.id);
+                const gcTask = section.tasks?.find(t => t.parentTaskId === cTask?.id);
                 expect(cTask).toBeDefined();
                 expect(pTask).toBeDefined();
-                expect(cTask?.parentTaskId).toBe(pTask?.id);
+                expect(gcTask).toBeDefined();
                 done();
             });
         });
