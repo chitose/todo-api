@@ -23,7 +23,7 @@ export interface ITaskRepository {
 
     createTask(userId: string, taskProp: ITaskCreationAttributes): Promise<TaskModel>;
 
-    changeOrder(userId: string, taskId: number, order: number): Promise<TaskModel>;
+    swapOrder(userId: string, taskId: number, targetTaskId: number): Promise<TaskModel[]>;
 
     updateTask(userId: string, taskId: number, taskProp: ITaskCreationAttributes): Promise<TaskModel>;
 
@@ -100,13 +100,32 @@ class TaskRepository implements ITaskRepository {
         });
     }
 
-    async changeOrder(userId: string, taskId: number, order: number): Promise<TaskModel> {
-        return await this.updateTask(userId, taskId, { taskOrder: order });
+    async swapOrder(userId: string, taskId: number, targetTaskId: number): Promise<TaskModel[]> {
+        const task = await this.getTask(userId, taskId);
+        const targetTask = await this.getTask(userId, targetTaskId);
+        if (!task) {
+            throw new Error(`Task ${taskId} not found`);
+        }
+
+        if (!targetTask) {
+            throw new Error(`Task ${targetTaskId} not found`);
+        }
+
+        const t = await TaskModel.sequelize?.transaction();
+        try {
+            const updateTask = await this.updateTask(userId, task.id, { taskOrder: targetTask.taskOrder });
+            const updateTargetTask = await this.updateTask(userId, targetTask.id, { taskOrder: task.taskOrder });
+            await t?.commit();
+            return [updateTask, updateTargetTask];
+        } catch (e) {
+            t?.rollback();
+            return [];
+        }
     }
 
     async getTask(userId: string, taskId: number): Promise<TaskModel> {
         return (await TaskModel.sequelize?.query(`
-        SELECT TOP t.* from ${TASK_TABLE} t left join ${USER_PROJECTS_TABLE} up on t.projectId = up.projectId
+        SELECT t.* from ${TASK_TABLE} t left join ${USER_PROJECTS_TABLE} up on t.projectId = up.projectId
         WHERE t.id = :taskId AND up.userId = :userId
         `, {
             model: TaskModel,
@@ -127,6 +146,31 @@ class TaskRepository implements ITaskRepository {
         const proj = await this.projectRepo.get(userId, taskProp.projectId);
         if (!proj) {
             throw new Error('Non-exist project or you are not the project collaborator');
+        }
+
+        if (!taskProp.taskOrder) {
+            let taskOrder = 0;
+            if (taskProp.sectionId) {
+                taskOrder = await TaskModel.max<number, TaskModel>('taskOrder', {
+                    where: {
+                        [Op.and]: {
+                            projectId: {
+                                [Op.eq]: proj.id
+                            },
+                            sectionId: { [Op.eq]: taskProp.sectionId }
+                        }
+                    }
+                })
+            } else {
+                taskOrder = await TaskModel.max<number, TaskModel>('taskOrder', {
+                    where: {
+                        projectId: {
+                            [Op.eq]: proj.id
+                        }
+                    }
+                });
+            }
+            taskProp.taskOrder = taskOrder + 1;
         }
 
         return await TaskModel.create(taskProp);
@@ -219,9 +263,22 @@ class TaskRepository implements ITaskRepository {
 
     async duplicateTask(userId: string, taskId: number): Promise<TaskModel> {
         const task = await this.getTask(userId, taskId);
+        if (!task) {
+            throw new Error('Task not found');
+        }
+        // using destructuring will not work becaus task is proxy object
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { id, ...rest } = task;
-        return await this.createTask(userId, rest);
+        return await this.createTask(userId, {
+            title: task.title,
+            description: task.description,
+            completed: task.completed,
+            assignTo: task.assignTo,
+            dueDate: task.dueDate,
+            projectId: task.projectId,
+            sectionId: task.sectionId,
+            priority: task.priority,
+            parentTaskId: task.parentTaskId
+        });
     }
 }
 

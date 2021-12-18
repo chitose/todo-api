@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { IProjectAttribute, IProjectCreationAttributes, ViewType } from '@daos/models';
-import { ISectionAttribute, ISectionCreationAttribute } from '@daos/models/section';
 import app from '@server';
 import { pErr } from '@shared/functions';
 import StatusCodes from 'http-status-codes';
@@ -10,21 +9,19 @@ import supertest, { SuperTest, Test } from 'supertest';
 
 const projectRouteBuilder = new ProjectRouteUrlBuilder(false);
 describe('ProjectRouter', () => {
-    const { CREATED, OK } = StatusCodes;
-
     let agent: SuperTest<Test>;
 
     beforeAll((done) => {
         agent = supertest.agent(app);
         done();
     });
-    
+
     const callCreateProjectApi = (auth: string, reqBody: IProjectCreationAttributes) => {
         return agent.put(projectRouteBuilder.create())
-            .set('Authorization', auth) 
+            .set('Authorization', auth)
             .type('json').send(reqBody);
     }
-    
+
     const callGetUserProjectApi = (auth: string) => {
         return agent.get(projectRouteBuilder.getUserProjects())
             .set('Authorization', auth);
@@ -53,11 +50,11 @@ describe('ProjectRouter', () => {
             view: ViewType.List
         };
 
-        it(`should return a status code of ${CREATED} if the request was successful.`, done => {
+        it(`should return a status code of ${StatusCodes.CREATED} if the request was successful.`, done => {
             callCreateProjectApi(user1.auth!, projData)
                 .end((err: Error, res) => {
                     pErr(err);
-                    expect(res.status).toBe(CREATED);
+                    expect(res.status).toBe(StatusCodes.CREATED);
                     const proj = res.body as IProjectAttribute;
                     expect(proj.id).toBeGreaterThan(0);
                     expect(proj.name).toBe(projData.name);
@@ -83,7 +80,7 @@ describe('ProjectRouter', () => {
                 }).end(() => {
                     callGetUserProjectApi(user2.auth!).end((err, res) => {
                         pErr(err);
-                        expect(res.status).toBe(OK);
+                        expect(res.status).toBe(StatusCodes.OK);
                         const projs = res.body as IProjectAttribute[];
                         expect(projs.length).toBeGreaterThan(0);
                         expect(projs.some(p => p.name === 'User 2 Test Project')).toBeTrue();
@@ -105,7 +102,7 @@ describe('ProjectRouter', () => {
                 const proj = res.body as IProjectAttribute;
                 expect(proj.id).toBeGreaterThan(0);
                 callGetProjectApi(user1.auth!, proj.id).end((err1, res1) => {
-                    expect(res1.status).toBe(OK);
+                    expect(res1.status).toBe(StatusCodes.OK);
                     const proj1 = res1.body as IProjectAttribute;
                     expect(proj1.id).toBe(proj.id);
                     done();
@@ -129,7 +126,7 @@ describe('ProjectRouter', () => {
         });
 
     });
-    
+
     describe(`"POST:${projectRouteBuilder.shareProject()}"`, () => {
         it('should share project with other user', (done) => {
             callCreateProjectApi(user1.auth!, {
@@ -139,7 +136,7 @@ describe('ProjectRouter', () => {
             }).end((err, res) => {
                 const proj = res.body as IProjectAttribute;
                 callShareProjectApi(user1.auth!, proj.id, { users: [user2.id, user3.id] }).end((err1, res1) => {
-                    expect(res1.status).toBe(OK);
+                    expect(res1.status).toBe(StatusCodes.OK);
                     callGetProjectApi(user2.auth!, proj.id).end((_, r) => {
                         const proj1 = r.body as IProjectAttribute;
                         expect(proj1.id).toBe(proj.id);
@@ -191,132 +188,6 @@ describe('ProjectRouter', () => {
                     expect(res1.status).toBe(StatusCodes.BAD_REQUEST);
                     done();
                 });
-            });
-        });
-    });
-
-    const callAddSectionApi = (auth: string, projectId: number, name: string) => {
-        return agent.put(projectRouteBuilder.createSection(projectId))
-            .set('Authorization', auth)
-            .type('json').send({ name: name } as ISectionCreationAttribute);
-    }
-
-    const callUpdateSectionApi = (auth: string, projectId: number, sect: number, prop: Partial<ISectionCreationAttribute>) => {
-        return agent.post(projectRouteBuilder.updateSection(projectId, sect))
-            .set('Authorization', auth)
-            .type('json').send(prop);
-    }
-
-    const callDeleteSectionApi = (auth: string, projectId: number, sect: number) => {
-        return agent.delete(projectRouteBuilder.deleteSection(projectId, sect))
-            .set('Authorization', auth);
-    }
-
-    describe(`"PUT:${projectRouteBuilder.createSection()}"`, () => {
-        let project: IProjectAttribute;
-        beforeEach(done => {
-            callCreateProjectApi(user1.auth!, {
-                name: 'Test project with section',
-                archived: false,
-                view: ViewType.List
-            }).end((err, res) => {
-                pErr(err);
-                project = res.body as IProjectAttribute;
-                done();
-            });
-        });
-
-        it(`should return status code ${StatusCodes.CREATED} when section is added succesfully.`, (done) => {
-            callAddSectionApi(user1.auth!, project.id, 'Test section')
-                .end((err1, res1) => {
-                    pErr(err1);
-                    expect(res1.status).toBe(StatusCodes.CREATED);
-                    const sect = res1.body as ISectionAttribute;
-                    expect(sect.id).toBeGreaterThan(0);
-                    expect(sect.order).toBe(1);
-                    done();
-                });
-        });
-
-        it(`should return status code ${StatusCodes.BAD_REQUEST} when section is added by none project collaborator`, (done) => {
-            callAddSectionApi(user2.auth!, project.id, 'Test section')
-                .end((err, res) => {
-                    pErr(err);
-                    expect(res.status).toBe(StatusCodes.BAD_REQUEST);
-                    done();
-                });
-        });
-    });
-
-    describe(`"POST:$${projectRouteBuilder.updateSection()}"`, () => {
-        let project: IProjectAttribute;
-        let section: ISectionAttribute;
-        beforeEach(done => {
-            callCreateProjectApi(user1.auth!, {
-                name: 'Test project with section',
-                archived: false,
-                view: ViewType.List
-            }).end((err, res) => {
-                pErr(err);
-                project = res.body as IProjectAttribute;
-                callAddSectionApi(user1.auth!, project.id, 'Test section').end((err1, res1) => {
-                    section = res1.body as ISectionAttribute;
-                    done();
-                });
-            });
-        });
-
-        it(`should return status code ${StatusCodes.OK} when section is updated succesfully.`, (done) => {
-            callUpdateSectionApi(user1.auth!, project.id, section.id, { name: 'Name updated', order: 2 })
-                .end((err, res) => {
-                    pErr(err);
-                    expect(res.status).toBe(StatusCodes.OK);
-                    const usect = res.body as ISectionAttribute;
-                    expect(usect.name).toBe('Name updated');
-                    expect(usect.order).toBe(2);
-                    done();
-                });
-        });
-
-        it(`should return status code ${StatusCodes.BAD_REQUEST} when section is updated by non-collaborator.`, (done) => {
-            callUpdateSectionApi(user2.auth!, project.id, section.id, { name: 'Name updated', order: 2 })
-                .end((err, res) => {
-                    pErr(err);
-                    expect(res.status).toBe(StatusCodes.BAD_REQUEST);
-                    done();
-                });
-        });
-    });
-
-    describe(`"DELETE:${projectRouteBuilder.deleteSection()}"`, () => {
-        let project: IProjectAttribute;
-        let section: ISectionAttribute;
-        beforeEach(done => {
-            callCreateProjectApi(user1.auth!, {
-                name: 'Test project with section',
-                archived: false,
-                view: ViewType.List
-            }).end((err, res) => {
-                pErr(err);
-                project = res.body as IProjectAttribute;
-                callAddSectionApi(user1.auth!, project.id, 'Test section').end((err1, res1) => {
-                    section = res1.body as ISectionAttribute;
-                    done();
-                });
-            });
-        });
-
-        it(`should return status code ${StatusCodes.NO_CONTENT} when section is deleted successfully.`, done => {
-            callDeleteSectionApi(user1.auth!, project.id, section.id).end((err, res) => {
-                expect(res.status).toBe(StatusCodes.NO_CONTENT);
-                done();
-            });
-        });
-
-        it(`should return status code ${StatusCodes.BAD_REQUEST} when section is deleted by none-collaborator.`, done => {
-            callDeleteSectionApi(user2.auth!, project.id, section.id).end((err, res) => {
-                expect(res.status).toBe(StatusCodes.BAD_REQUEST);
-                done();
             });
         });
     });

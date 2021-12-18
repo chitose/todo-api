@@ -1,7 +1,7 @@
 import db from '@daos/sqlite3/sqlite-dao';
-import { DataTypes, Model, Optional } from 'sequelize';
+import { Association, DataTypes, Model, Optional } from 'sequelize';
 
-import { ProjectModel } from '.';
+import { ProjectModel, TaskModel } from '.';
 import { autoIncrementIdColumn } from './columns';
 
 export interface ISectionAttribute {
@@ -18,6 +18,12 @@ export class SectionModel extends Model<ISectionAttribute, ISectionCreationAttri
     public name!: string;
     public projectId!: number;
     public order!: number;
+
+    public readonly tasks?: TaskModel[];
+
+    public static associations: {
+        tasks: Association<SectionModel, TaskModel>;
+    }
 }
 
 export const SECTION_TABLE = 'section';

@@ -1,5 +1,5 @@
 import db from '@daos/sqlite3/sqlite-dao';
-import { DataTypes, Model, Optional } from 'sequelize';
+import { DataTypes, Model } from 'sequelize';
 
 import { ProjectModel, UserModel } from '.';
 import { autoIncrementIdColumn } from './columns';
@@ -12,8 +12,7 @@ export enum TaskPriority {
     Priority4
 }
 
-export interface ITaskAttribute {
-    id: number;
+export interface ITaskCreationAttributes {
     title: string;
     description: string;
     dueDate?: Date;
@@ -23,10 +22,12 @@ export interface ITaskAttribute {
     assignTo?: string;
     sectionId?: number;
     completed: boolean;
+    taskOrder?: number;
+}
+export interface ITaskAttribute extends ITaskCreationAttributes {
+    id: number;
     taskOrder: number;
 }
-
-export interface ITaskCreationAttributes extends Optional<ITaskAttribute, 'id'> { }
 
 export class TaskModel extends Model<ITaskAttribute, ITaskCreationAttributes> implements ITaskAttribute {
     public taskOrder!: number;
@@ -120,5 +121,5 @@ TaskModel.belongsTo(UserModel, { foreignKey: 'userId' });
 ProjectModel.hasMany(TaskModel, { foreignKey: 'projectId' });
 TaskModel.belongsTo(ProjectModel, { foreignKey: 'projectId' });
 
-SectionModel.hasMany(TaskModel, { foreignKey: 'sectionId' });
+SectionModel.hasMany(TaskModel, { foreignKey: 'sectionId', as: 'tasks' });
 TaskModel.belongsTo(SectionModel, { foreignKey: 'sectionId' });

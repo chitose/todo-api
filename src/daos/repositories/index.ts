@@ -26,5 +26,5 @@ export function getLabelRepository(): ILabelRepository {
 }
 
 export function getSectionRepository(): ISectionRepository {
-    return createSectionRepository(getProjectRepository());
+    return createSectionRepository(getProjectRepository(), getTaskRepository());
 }

@@ -5,8 +5,16 @@ import { Request, Response, Router } from 'express';
 import { StatusCodes } from 'http-status-codes';
 
 import { RouteParams } from './route-params';
-import { createSection, deleteSection, duplicateSection, updateSection } from './sections';
-import { createSectionTask, createTask } from './tasks';
+import {
+    createSection,
+    deleteSection,
+    duplicateSection,
+    getSection,
+    getSections,
+    swapSectionOrder,
+    updateSection,
+} from './sections';
+import { createTask, duplicateTask, getTask, getTasks } from './tasks';
 
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
@@ -99,8 +107,16 @@ export class ProjectRouteUrlBuilder {
         return `${this.getProjectById(id)}/section`;
     }
 
+    public getSections(projectId?: number | string) {
+        return `${this.getProjectById(projectId)}/section`;
+    }
+
+    public getSection(projectId?: number | string, sectId?: number | string) {
+        return `${this.getProjectById(projectId)}/section/${sectId ? sectId : ':' + RouteParams.SectionId}`;
+    }
+
     public updateSection(projId?: string | number, sectionId?: string | number) {
-        return this.getUrl(`/${projId || (':' + RouteParams.ProjectId)}/section/${sectionId || (':' + RouteParams.SectionId)}`);
+        return this.getSection(projId, sectionId);
     }
 
     public deleteSection(projId?: string | number, sectionId?: string | number) {
@@ -111,12 +127,33 @@ export class ProjectRouteUrlBuilder {
         return `${this.updateSection(projId, sectionId)}/duplicate`;
     }
 
+    public swapSectionOrder(projectId?: number | string, sourceSectId?: number | string, targetSectId?: number | string): string {
+        return `${this.getSection(projectId, sourceSectId)}/swap/${targetSectId ? targetSectId : ':' + RouteParams.TargetSectionId}`;
+    }
+
     public createTask(projId?: string | number) {
         return `${this.getProjectById(projId)}/task`;
     }
 
     public createSectionTask(projId?: string | number, sectionId?: string | number) {
         return `${this.updateSection(projId, sectionId)}/task`;
+    }
+
+
+    public getTasks(projId?: number | string) {
+        return `${this.getProjectById(projId)}/tasks`;
+    }
+
+    public getTask(projectId?: number | string, taskId?: number | string) {
+        return `${this.getProjectById(projectId)}/task/${(taskId ? taskId : ':' + RouteParams.TaskId)}`;
+    }
+
+    public duplicateTask(projectId?: number | string, taskId?: number | string) {
+        return `${this.getTask(projectId, taskId)}/duplicate`;
+    }
+
+    public swapTaskOrder(projectId?: number | string, taskId?: number | string, targetTaskId?: number | string) {
+        return `${this.getTask(projectId, taskId)}/swapOrder/${targetTaskId ? targetTaskId : ':' + RouteParams.TargetTaskId}`;
     }
 
     private getUrl(rel: string) {
@@ -135,13 +172,20 @@ projectRouter.post(projectRoutes.shareProject(), shareProject);
 projectRouter.delete(projectRoutes.deleteProject(), deleteProject);
 
 // section
+projectRouter.get(projectRoutes.getSection(), getSection);
+projectRouter.get(projectRoutes.getSections(), getSections);
+projectRouter.post(projectRoutes.swapSectionOrder(), swapSectionOrder);
 projectRouter.put(projectRoutes.createSection(), createSection);
 projectRouter.post(projectRoutes.updateSection(), updateSection);
 projectRouter.delete(projectRoutes.deleteSection(), deleteSection);
 projectRouter.post(projectRoutes.duplicateSection(), duplicateSection);
 
+
 // task
 projectRouter.put(projectRoutes.createTask(), createTask);
-projectRouter.put(projectRoutes.createSectionTask(), createSectionTask);
+projectRouter.put(projectRoutes.createSectionTask(), createTask);
+projectRouter.get(projectRoutes.getTasks(), getTasks);
+projectRouter.get(projectRoutes.getTask(), getTask);
+projectRouter.post(projectRoutes.duplicateTask(), duplicateTask);
 
 export default projectRouter;
