@@ -15,9 +15,7 @@ import { IProjectRepository } from './project-repo';
 export interface ITaskRepository {
     getTasks(userId: string, projectId: number): Promise<TaskModel[]>;
 
-    moveSectionTasks(userId: string, projectId: number, sectId: number, targetProjectId: number): Promise<void>;
-
-    moveProjectTask(userId: string, projectId: number, targetProjectId: number): Promise<void>;
+    moveTask(userId: string, projectId: number, targetProjectId: number, targetSectId?: number): Promise<void>;
 
     getTask(userId: string, taskId: number): Promise<TaskModel>;
 
@@ -36,8 +34,6 @@ export interface ITaskRepository {
     completeTask(userId: string, taskId: number): Promise<TaskModel>;
 
     setTaskDueDate(userId: string, taskId: number, dueDate: Date): Promise<TaskModel>;
-
-    moveToProject(userId: string, taskId: number, projectId: number): Promise<void>;
 
     duplicateTask(userId: string, taskId: number): Promise<TaskModel>;
 }
@@ -63,35 +59,22 @@ class TaskRepository implements ITaskRepository {
             }) as TaskModel[];
     }
 
-    async moveSectionTasks(userId: string, projectId: number, sectId: number, targetProjectId: number): Promise<void> {
+    async moveTask(userId: string, projectId: number, targetProjectId: number, targetSectionId?: number): Promise<void> {
         const proj = await this.projectRepo.get(userId, projectId);
         const targetProj = await this.projectRepo.get(userId, targetProjectId);
         if (!proj || !targetProj) {
             throw new Error('Project not found or not project callaborator');
         }
 
-        await TaskModel.update({
+        const updateProp: Partial<ITaskCreationAttributes> = {
             projectId: targetProjectId
-        }, {
-            where: {
-                [Op.and]: {
-                    projectId: { [Op.eq]: projectId },
-                    sectionId: { [Op.eq]: sectId }
-                }
-            }
-        });
-    }
+        };
 
-    async moveProjectTask(userId: string, projectId: number, targetProjectId: number): Promise<void> {
-        const proj = await this.projectRepo.get(userId, projectId);
-        const targetProj = await this.projectRepo.get(userId, targetProjectId);
-        if (!proj || !targetProj) {
-            throw new Error('Project not found or not project callaborator');
+        if (targetSectionId) {
+            updateProp.sectionId = targetSectionId;
         }
 
-        await TaskModel.update({
-            projectId: targetProjectId
-        }, {
+        await TaskModel.update(updateProp, {
             where: {
                 [Op.and]: {
                     projectId: { [Op.eq]: projectId }
@@ -255,11 +238,7 @@ class TaskRepository implements ITaskRepository {
 
     async setTaskDueDate(userId: string, taskId: number, dueDate: Date): Promise<TaskModel> {
         return this.updateTask(userId, taskId, { dueDate: dueDate });
-    }
-
-    async moveToProject(userId: string, taskId: number, projectId: number): Promise<void> {
-        await this.updateTask(userId, taskId, { projectId: projectId });
-    }
+    }    
 
     async duplicateTask(userId: string, taskId: number): Promise<TaskModel> {
         const task = await this.getTask(userId, taskId);

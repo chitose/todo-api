@@ -1,6 +1,7 @@
 import 'express-async-errors';
 
 import logger from '@shared/logger';
+import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import express, { NextFunction, Request, Response } from 'express';
 import session from 'express-session';
@@ -28,9 +29,23 @@ app.use(session({
     secret: APP_SECRET
 }));
 
+app.set('json replacer', function (key: string, value: any) {
+    // convert sequalize date string to ISO format
+    if (typeof(value) === 'string')     {
+        const match = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} \+\d{2}:\d{2}$/.exec(value);
+        if (match) {
+            return new Date(value).toISOString();
+        }
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+    return value;
+});
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+app.use(compression());
 
 configureAuthentication(app, APP_SECRET);
 

@@ -18,8 +18,17 @@ export async function getTasks(req: Request, res: Response) {
 }
 
 //     moveSectionTasks(userId: string, projectId: number, sectId: number, targetProjectId: number): Promise<void>;
-
-//     moveProjectTask(userId: string, projectId: number, targetProjectId: number): Promise<void>;
+export async function moveTask(req: Request, res: Response) {
+    const user = req.user as IUserAttribute;
+    const projectId = Number(req.params[RouteParams.ProjectId]);
+    const targetProjectId = Number(req.params[RouteParams.TargetProjectId]);
+    const targetSectionId = req.params[RouteParams.TargetSectionId];
+    try {
+        await taskRepo.moveTask(user.id, projectId, targetProjectId, targetSectionId ? Number(targetSectionId) : undefined);
+    } catch (e: any) {
+        return res.status(StatusCodes.BAD_REQUEST).send({ message: e.message });
+    }
+}
 
 //     getTask(userId: string, taskId: number): Promise<TaskModel>;
 export async function getTask(req: Request, res: Response) {
@@ -81,12 +90,47 @@ export async function assignTask(req: Request, res: Response) {
 }
 
 //     setTaskPriority(userId: string, taskId: number, priority: TaskPriority): Promise<TaskModel>;
+export async function setTaskPriority(req: Request, res: Response) {
+    const user = req.user as IUserAttribute;
+    const taskId = Number(req.params[RouteParams.TaskId]);
+    try {
+        if (!req.body) {
+            throw new Error('Missing priority value');
+        }
+        const priority = Number(req.body);
+        const task = await taskRepo.setTaskPriority(user.id, taskId, priority);
+        return res.status(StatusCodes.OK).json(task);
+    } catch (e: any) {
+        return res.status(StatusCodes.BAD_REQUEST).send({ message: e.message });
+    }
+}
 
 //     completeTask(userId: string, taskId: number): Promise<TaskModel>;
+export async function completeTask(req: Request, res: Response) {
+    const user = req.user as IUserAttribute;
+    const taskId = Number(req.params[RouteParams.TaskId]);
+    try {
+        const task = await taskRepo.completeTask(user.id, taskId);
+        return res.status(StatusCodes.OK).json(task);
+    } catch (e: any) {
+        return res.status(StatusCodes.BAD_REQUEST).send({ message: e.message });
+    }
+}
 
 //     setTaskDueDate(userId: string, taskId: number, dueDate: Date): Promise<TaskModel>;
-
-//     moveToProject(userId: string, taskId: number, projectId: number): Promise<void>;
+export async function setTaskDueDate(req: Request, res: Response) {
+    const user = req.user as IUserAttribute;
+    const taskId = Number(req.params[RouteParams.TaskId]);
+    try {
+        if (!req.body) {
+            throw new Error('Missing due date');
+        }
+        const task = await taskRepo.setTaskDueDate(user.id, taskId, req.body as Date);
+        return res.status(StatusCodes.OK).json(task);
+    } catch (e: any) {
+        return res.status(StatusCodes.BAD_REQUEST).send({ message: e.message });
+    }
+}
 
 //     duplicateTask(userId: string, taskId: number): Promise<TaskModel>;
 export async function duplicateTask(req: Request, res: Response) {

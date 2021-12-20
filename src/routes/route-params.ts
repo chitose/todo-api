@@ -6,4 +6,5 @@ export class RouteParams {
     public static readonly LabelId = 'labelId';
     public static readonly CommentId = 'commentId';
     public static readonly TargetSectionId = 'targetSectionId';
+    public static readonly TargetProjectId: 'targetProjectId';
 }

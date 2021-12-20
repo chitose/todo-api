@@ -14,7 +14,20 @@ import {
     swapSectionOrder,
     updateSection,
 } from './sections';
-import { createTask, duplicateTask, getTask, getTasks } from './tasks';
+import {
+    assignTask,
+    completeTask,
+    createTask,
+    deleteTask,
+    duplicateTask,
+    getTask,
+    getTasks,
+    moveTask,
+    setTaskDueDate,
+    setTaskPriority,
+    swapTaskOrder,
+    updateTask,
+} from './tasks';
 
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
@@ -156,6 +169,37 @@ export class ProjectRouteUrlBuilder {
         return `${this.getTask(projectId, taskId)}/swapOrder/${targetTaskId ? targetTaskId : ':' + RouteParams.TargetTaskId}`;
     }
 
+    public deleteTask(projectId?: number | string, taskId?: number | string) {
+        return `${this.getTask(projectId, taskId)}`;
+    }
+
+    public assignTask(projectId?: number | string, taskId?: number | string) {
+        return `${this.getTask(projectId, taskId)}/assignTask`;
+    }
+
+    public updateTask(projectId?: number | string, taskId?: number | string) {
+        return `${this.getTask(projectId, taskId)}/update`;
+    }
+
+    public completeTask(projectId?: number | string, taskId?: number | string) {
+        return `${this.getTask(projectId, taskId)}/complete`;
+    }
+
+    public setTaskDueDate(projectId?: number | string, taskId?: number | string) {
+        return `${this.getTask(projectId, taskId)}/duedate`;
+    }
+
+    public setTaskPriority(projectId?: number | string, taskId?: number | string) {
+        return `${this.getTask(projectId, taskId)}/priority`;
+    }
+    public moveTask(projectId?: number | string, taskId?: number | string, targetProjectId?: number | string) {
+        return `${this.getTask(projectId, taskId)}/move/${targetProjectId ? targetProjectId : ':' + RouteParams.TargetProjectId}`;
+    }
+
+    public moveTaskToSection(projectId?: number | string, taskId?: number | string, targetProjectId?: number | string, sectId?: number | string) {
+        return `${this.moveTask(projectId, taskId, targetProjectId)}/${sectId ? sectId : ':' + RouteParams.TargetSectionId}`;
+    }
+
     private getUrl(rel: string) {
         return this.relativeOnly ? rel : `/api${this.base}${rel}`;
     }
@@ -187,5 +231,14 @@ projectRouter.put(projectRoutes.createSectionTask(), createTask);
 projectRouter.get(projectRoutes.getTasks(), getTasks);
 projectRouter.get(projectRoutes.getTask(), getTask);
 projectRouter.post(projectRoutes.duplicateTask(), duplicateTask);
+projectRouter.post(projectRoutes.moveTask(), moveTask);
+projectRouter.post(projectRoutes.moveTaskToSection(), moveTask);
+projectRouter.post(projectRoutes.swapTaskOrder(), swapTaskOrder);
+projectRouter.post(projectRoutes.setTaskPriority(), setTaskPriority);
+projectRouter.post(projectRoutes.setTaskDueDate(), setTaskDueDate);
+projectRouter.post(projectRoutes.completeTask(), completeTask);
+projectRouter.post(projectRoutes.updateTask(), updateTask);
+projectRouter.delete(projectRoutes.deleteTask(), deleteTask);
+projectRouter.post(projectRoutes.assignTask(), assignTask);
 
 export default projectRouter;

@@ -4,6 +4,7 @@ import {
     IProjectCreationAttributes,
     ITaskAttribute,
     ITaskCreationAttributes,
+    TaskPriority,
     ViewType,
 } from '@daos/models';
 import { ISectionAttribute, ISectionCreationAttribute } from '@daos/models/section';
@@ -267,5 +268,68 @@ describe('ProjectRouter - Tasks', () => {
                 done();
             });
         });
+    });
+
+    const callUpdateTaskApi = (auth: string, projectId: number, taskId: number, taskProp: Partial<ITaskCreationAttributes>) => {
+        return agent.post(projectRouteBuilder.updateTask(projectId, taskId))
+            .set('Authorization', auth).type('json').send(taskProp);
+    }
+
+    describe(`POST:"${projectRouteBuilder.updateTask()}"`, () => {
+        let project: IProjectAttribute;
+        let section: ISectionAttribute;
+        let task: ITaskAttribute;
+        beforeEach(done => {
+            callCreateProjectApi(user1.auth!, {
+                name: 'Test project with section',
+                archived: false,
+                view: ViewType.List
+            }).end((err, res) => {
+                pErr(err);
+                project = res.body as IProjectAttribute;
+                callAddSectionApi(user1.auth!, project.id, 'Test Section').end((err1, res1) => {
+                    section = res1.body as ISectionAttribute;
+                    callAddProjectTaskApi(user1.auth!, project.id, {
+                        title: 'Test task',
+                        description: 'Test desc',
+                        projectId: project.id,
+                        completed: false
+                    }).end((err2, res2) => {
+                        task = res2.body as ITaskAttribute;
+                        done();
+                    });
+                });
+            });
+        });
+
+        const updateProp: Partial<ITaskCreationAttributes> = {
+            title: 'Updated test task',
+            description: 'Updated test task description',
+            completed: true,
+            dueDate: new Date(),
+            priority: TaskPriority.Priority2,
+            assignTo: user2.id
+        };
+
+        it(`it should return status ${StatusCodes.OK} when task is updated successfully`, done => {            
+            callUpdateTaskApi(user1.auth!, project.id, task.id, updateProp).end((err, res) => {
+                expect(res.status).toBe(StatusCodes.OK);
+                const utask = res.body as ITaskAttribute;
+                expect(utask.priority).toBe(updateProp.priority);
+                expect(utask.title).toBe(updateProp.title!);
+                expect(utask.description).toBe(updateProp.description!);
+                expect(utask.assignTo).toBe(updateProp.assignTo);
+                expect(new Date(utask.dueDate!.toString())).toEqual(updateProp.dueDate!);
+                done();
+            });
+        });
+
+        it(`it should return status ${StatusCodes.BAD_REQUEST} when task is updated by non project collaborator`, done => {            
+            callUpdateTaskApi(user2.auth!, project.id, task.id, updateProp).end((err, res) => {
+                expect(res.status).toBe(StatusCodes.BAD_REQUEST);                
+                done();
+            });
+        });
+
     });
 });
