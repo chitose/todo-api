@@ -1,20 +1,15 @@
 import db from '@daos/sqlite3/sqlite-dao';
-import { DataTypes, Model, Optional } from 'sequelize';
+import { DataTypes, Model } from 'sequelize';
 
-import { autoIncrementIdColumn } from '../columns';
 import { LabelModel } from '../label';
 import { TaskModel } from '../task';
 
 export interface ITaskLabelAttribute {
-    id: number;
     taskId: number;
     labelId: number;
 }
 
-export interface ITaskLabelCreationAttribute extends Optional<ITaskLabelAttribute, 'id'> { }
-
-export class TaskLabelModel extends Model<ITaskLabelAttribute, ITaskLabelCreationAttribute> implements ITaskLabelAttribute {
-    public id!: number;
+export class TaskLabelModel extends Model<ITaskLabelAttribute, ITaskLabelAttribute> implements ITaskLabelAttribute {
     public taskId!: number;
     public labelId!: number;
 }
@@ -23,7 +18,6 @@ export const TASK_LABELS_TABLE = 'task_labels';
 
 TaskLabelModel.init(
     {
-        id: autoIncrementIdColumn<TaskLabelModel>(),
         taskId: {
             type: DataTypes.INTEGER,
             references: {
@@ -45,5 +39,5 @@ TaskLabelModel.init(
     }
 );
 
-TaskModel.belongsToMany(LabelModel, { through: TaskLabelModel, foreignKey: 'taskId' });
-LabelModel.belongsToMany(TaskModel, { through: TaskLabelModel, foreignKey: 'labelId' });
+export const TaskLabelAssociation = TaskModel.belongsToMany(LabelModel, { as: 'labels', through: TaskLabelModel, foreignKey: 'taskId', otherKey: 'labelId' });
+export const LabelTaskAssociation = LabelModel.belongsToMany(TaskModel, { as: 'tasks', through: TaskLabelModel, foreignKey: 'labelId', otherKey: 'taskId' });

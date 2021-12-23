@@ -13,13 +13,14 @@ export function configureAuthentication(app: express.Express, appSecret: string)
     app.use(passport.initialize());
     app.use(passport.session());
 
-    app.get('/success', (req, res) => res.send({
-        id: userProfile.id,
-        displayName: userProfile.displayName,
-        email: userProfile.emails && userProfile.emails[0].value,
-        photo: userProfile.photos && userProfile.photos[0].value,
-        jwt: userProfile.jwt
-    }));
+    app.get('/success', (req, res) => res.send(`<script>window.opener.postMessage({
+            id: ${userProfile.id},
+        displayName: '${userProfile.displayName}',
+        name: ${JSON.stringify(userProfile.name)},
+        email: '${userProfile.emails && userProfile.emails[0].value || ''}',
+        photo: '${userProfile.photos && userProfile.photos[0].value || ''}',
+        jwt: '${userProfile.jwt || ''}'
+        }, '*')</script>`));
 
     app.get('/error', (req, res) => res.send("error logging in"));
 

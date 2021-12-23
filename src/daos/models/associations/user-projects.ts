@@ -1,19 +1,14 @@
 import db from '@daos/sqlite3/sqlite-dao';
-import { DataTypes, Model, Optional } from 'sequelize';
+import { DataTypes, Model } from 'sequelize';
 
 import { ProjectModel } from '../project';
 import { UserModel } from '../user';
 
 export interface IUserProjectsAttribute {
-    id: number;
     userId: string;
     projectId: number;
 }
-
-export interface IUserProjectsCreationAttributes extends Optional<IUserProjectsAttribute, 'id'> { }
-
-export class UserProjectsModel extends Model<IUserProjectsAttribute, IUserProjectsCreationAttributes> implements IUserProjectsAttribute {
-    public id!: number;
+export class UserProjectsModel extends Model<IUserProjectsAttribute, IUserProjectsAttribute> implements IUserProjectsAttribute {
     public userId!: string;
     public projectId!: number;
 }
@@ -22,12 +17,6 @@ export const USER_PROJECTS_TABLE = 'user_projects';
 
 UserProjectsModel.init(
     {
-        id: {
-            type: DataTypes.INTEGER,
-            primaryKey: true,
-            autoIncrement: true,
-            allowNull: false
-        },
         userId: {
             type: DataTypes.STRING(255),
             references: {
@@ -49,5 +38,5 @@ UserProjectsModel.init(
     });
 
 // relation ship
-UserModel.belongsToMany(ProjectModel, { through: UserProjectsModel, foreignKey: 'userId' });
-ProjectModel.belongsToMany(UserModel, { through: UserProjectsModel, foreignKey: 'projectId' });
+export const UserProjectAssociation = UserModel.belongsToMany(ProjectModel, { through: UserProjectsModel, foreignKey: 'userId', as: 'projects' });
+export const ProjectUserAssociation = ProjectModel.belongsToMany(UserModel, { through: UserProjectsModel, foreignKey: 'projectId', as: 'users' });

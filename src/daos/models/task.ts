@@ -1,7 +1,8 @@
 import db from '@daos/sqlite3/sqlite-dao';
-import { DataTypes, Model } from 'sequelize';
+import { getKey } from '@shared/utils';
+import { DataTypes, HasManyGetAssociationsMixin, Model } from 'sequelize';
 
-import { ProjectModel, UserModel } from '.';
+import { ILabelAttribute, LabelModel, ProjectModel, UserModel } from '.';
 import { autoIncrementIdColumn } from './columns';
 import { SectionModel } from './section';
 
@@ -17,12 +18,13 @@ export interface ITaskCreationAttributes {
     description: string;
     dueDate?: Date;
     priority?: TaskPriority;
-    parentTaskId?: number;
     projectId: number;
     assignTo?: string;
     sectionId?: number;
     completed: boolean;
     taskOrder?: number;
+    labels?: Partial<ILabelAttribute>[];
+    parentTaskId?: number;
 }
 export interface ITaskAttribute extends ITaskCreationAttributes {
     id: number;
@@ -36,11 +38,16 @@ export class TaskModel extends Model<ITaskAttribute, ITaskCreationAttributes> im
     public description!: string;
     public dueDate?: Date | undefined;
     public priority?: TaskPriority | undefined;
-    public parentTaskId?: number | undefined;
     public projectId!: number;
     public assignTo?: string | undefined;
     public sectionId?: number | undefined;
     public completed!: boolean;
+
+    public readonly labels?: LabelModel[];
+
+    public readonly subTasks?: TaskModel[];
+
+    public getSubTasks!: HasManyGetAssociationsMixin<TaskModel>;
 }
 
 export const TASK_TABLE = 'task';
@@ -72,14 +79,6 @@ TaskModel.init(
             type: DataTypes.INTEGER,
             allowNull: false
         },
-        parentTaskId: {
-            type: DataTypes.INTEGER,
-            allowNull: true,
-            references: {
-                model: TaskModel,
-                key: 'id'
-            }
-        },
         projectId: {
             type: DataTypes.INTEGER,
             allowNull: false,
@@ -110,16 +109,50 @@ TaskModel.init(
         sequelize: db,
         indexes: [
             {
-                fields: ['title', 'description']
+                fields: [getKey<ITaskAttribute>('title'), getKey<ITaskAttribute>('description')]
             }
         ]
     });
 
-UserModel.hasMany(TaskModel, { foreignKey: 'userId' });
-TaskModel.belongsTo(UserModel, { foreignKey: 'userId' });
+export const ProjectTaskAssociation = ProjectModel.hasMany(TaskModel, { foreignKey: 'projectId', as: 'tasks' });
+export const TaskProjectAssociation = TaskModel.belongsTo(ProjectModel, { foreignKey: 'projectId', as: 'project' });
 
-ProjectModel.hasMany(TaskModel, { foreignKey: 'projectId' });
-TaskModel.belongsTo(ProjectModel, { foreignKey: 'projectId' });
+export const SectionTaskAssociation = SectionModel.hasMany(TaskModel, { foreignKey: 'sectionId', as: 'tasks' });
+export const TaskSectionAssociation = TaskModel.belongsTo(SectionModel, { foreignKey: 'sectionId', as: 'section' });
 
-SectionModel.hasMany(TaskModel, { foreignKey: 'sectionId', as: 'tasks' });
-TaskModel.belongsTo(SectionModel, { foreignKey: 'sectionId' });
+export interface ITaskSubTaskAttribute {
+    taskId: number;
+    subTaskId: number;
+}
+
+export class TaskSubTaskModel extends Model<ITaskSubTaskAttribute, ITaskSubTaskAttribute> implements ITaskSubTaskAttribute {
+    public taskId!: number;
+    public subTaskId!: number;
+}
+
+TaskSubTaskModel.init({
+    taskId: {
+        type: DataTypes.INTEGER,
+        references: {
+            model: TaskModel,
+            key: 'id'
+        }
+    },
+    subTaskId: {
+        type: DataTypes.INTEGER,
+        references: {
+            model: TaskModel,
+            key: 'id'
+        }
+    }
+}, {
+    tableName: 'sub_tasks',
+    sequelize: db,
+    indexes: [
+        {
+            fields: [getKey<ITaskSubTaskAttribute>('taskId'), getKey<ITaskSubTaskAttribute>('subTaskId')]
+        }
+    ]
+});
+
+export const TaskSubTaskAssociation = TaskModel.belongsToMany(TaskModel, { as: 'subTasks', through: TaskSubTaskModel, foreignKey: 'taskId', otherKey: 'subTaskId' });

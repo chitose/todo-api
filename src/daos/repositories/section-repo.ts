@@ -1,14 +1,21 @@
-import { ISectionAttribute, ISectionCreationAttribute, SECTION_TABLE, SectionModel } from '@daos/models/section';
-import { getKey } from '@shared/utils';
-import { Op, QueryTypes } from 'sequelize/dist';
+import { ISectionCreationAttribute, SectionModel } from '@daos/models/section';
+import { Includeable, Op } from 'sequelize/dist';
 
-import { IUserProjectsAttribute, USER_PROJECTS_TABLE } from '..';
+import {
+    ITaskSubTaskAttribute,
+    ProjectModel,
+    ProjectUserAssociation,
+    SectionTaskAssociation,
+    TaskModel,
+    TaskSubTaskModel,
+    UserModel,
+} from '..';
 import { IProjectRepository } from './project-repo';
 import { ITaskRepository } from './task-repo';
 
 export interface ISectionRepository {
     getSections(userId: string, projectId: number): Promise<SectionModel[]>;
-    getSection(userId: string, projectId: number, sectId: number): Promise<SectionModel>;
+    getSection(userId: string, projectId: number, sectId: number): Promise<SectionModel | null>;
     addSection(userId: string, projId: number, name: string): Promise<SectionModel>;
     updateSection(userId: string, projId: number, sectId: number, prop: Partial<ISectionCreationAttribute>): Promise<SectionModel>;
     deleteSection(userId: string, projId: number, sectId: number): Promise<void>;
@@ -19,41 +26,45 @@ export interface ISectionRepository {
 
 class SectionRepository implements ISectionRepository {
     constructor(private projectRepo: IProjectRepository, private taskRepo: ITaskRepository) { }
-
+    private getCommonInclude(userId: string): Includeable[] {
+        return [{
+            model: TaskModel,
+            as: SectionTaskAssociation.as
+        },
+        {
+            model: ProjectModel,
+            required: true,
+            include: [{
+                model: UserModel,
+                required: true,
+                where: {
+                    id: userId
+                },
+                as: ProjectUserAssociation.as,
+                attributes: []
+            }],
+            attributes: []
+        }
+        ];
+    }
     async getSections(userId: string, projectId: number): Promise<SectionModel[]> {
-        return await SectionModel.sequelize!.query(`
-        SELECT s.* FROM ${SECTION_TABLE} s
-        LEFT JOIN ${USER_PROJECTS_TABLE} up on up.${getKey<IUserProjectsAttribute>('projectId')} = s.${getKey<ISectionAttribute>('projectId')}
-        WHERE s.${getKey<ISectionAttribute>('projectId')} = :projectId AND up.${getKey<IUserProjectsAttribute>('userId')} = :userId
-        `, {
-            model: SectionModel,
-            mapToModel: true,
-            type: QueryTypes.SELECT,
-            replacements: {
-                userId,
-                projectId
-            }
+        return SectionModel.findAll({
+            where: {
+                projectId: projectId
+            },
+            include: this.getCommonInclude(userId)
         });
     }
 
-    async getSection(userId: string, projectId: number, sectId: number): Promise<SectionModel> {
-        const sections = await SectionModel.sequelize!.query(`
-        SELECT s.* FROM ${SECTION_TABLE} s
-        LEFT JOIN ${USER_PROJECTS_TABLE} up on up.${getKey<IUserProjectsAttribute>('projectId')} = s.${getKey<ISectionAttribute>('projectId')}
-        WHERE s.${getKey<ISectionAttribute>('id')} = :sectId AND s.${getKey<ISectionAttribute>('projectId')} = :projectId
-        AND up.${getKey<IUserProjectsAttribute>('userId')} = :userId
-        `, {
-            model: SectionModel,
-            mapToModel: true,
-            type: QueryTypes.SELECT,
-            replacements: {
-                userId,
-                projectId,
-                sectId
-            }
+    async getSection(userId: string, projectId: number, sectId: number): Promise<SectionModel | null> {
+        const sect = await SectionModel.findOne({
+            where: {
+                id: sectId,
+                projectId: projectId
+            },
+            include: this.getCommonInclude(userId)
         });
-
-        return sections[0];
+        return sect;
     }
 
     async swapOrder(userId: string, projectId: number, sectId: number, targetSectId: number): Promise<SectionModel[]> {
@@ -159,12 +170,7 @@ class SectionRepository implements ISectionRepository {
     async duplicateSection(userId: string, projId: number, sectId: number): Promise<SectionModel | undefined> {
         await this.assertProjectCollaborator(userId, projId);
 
-        const section = await SectionModel.findOne({
-            where: {
-                id: { [Op.eq]: sectId }
-            },
-            include: [SectionModel.associations.tasks],
-        });
+        const section = await this.getSection(userId, projId, sectId);
 
 
         if (!section) {
@@ -174,13 +180,10 @@ class SectionRepository implements ISectionRepository {
         const t = await SectionModel.sequelize?.transaction();
         try {
             const newSection = await this.addSection(userId, projId, section.name);
-            let tasks = (section.tasks || []).slice();
-            const parentTaskMap = new Map<number, number>();
+            const tasks = (section.tasks || []).slice();
+            const taskMap = new Map<number, number>();
 
-            const parentTasks = tasks.filter(x => !x.parentTaskId);
-            tasks = tasks.filter(x => parentTasks.indexOf(x) < 0);
-
-            for (const task of parentTasks) {
+            for (const task of tasks) {
                 const duplicateRootTask = await this.taskRepo.createTask(userId, {
                     title: task.title,
                     description: task.description,
@@ -192,37 +195,23 @@ class SectionRepository implements ISectionRepository {
                     taskOrder: task.taskOrder,
                     sectionId: newSection.id
                 });
-                parentTaskMap.set(task.id, duplicateRootTask.id);
+                taskMap.set(task.id, duplicateRootTask.id);
             }
 
-            while (tasks.length > 0) {
-                // find all the child task
-                const childTasks = tasks.filter(x => parentTaskMap.get(x.parentTaskId!));
-                tasks = tasks.filter(x => childTasks.indexOf(x) < 0);
-                for (const task of childTasks) {
-                    const duplicateRootTask = await this.taskRepo.createTask(userId, {
-                        title: task.title,
-                        description: task.description,
-                        completed: task.completed,
-                        projectId: task.projectId,
-                        assignTo: task.assignTo,
-                        dueDate: task.dueDate,
-                        priority: task.priority,
-                        taskOrder: task.taskOrder,
-                        sectionId: newSection.id,
-                        parentTaskId: parentTaskMap.get(task.parentTaskId!)
-                    });
-                    parentTaskMap.set(task.id, duplicateRootTask.id);
+            // duplicate relation ship of tasks
+            const bulkCreate: ITaskSubTaskAttribute[] = [];
+            for (const task of tasks) {
+                const subTasks = await task.getSubTasks();
+                if (subTasks.length > 0) {
+                    bulkCreate.push(...subTasks.map(st => ({ taskId: taskMap.get(task.id), subTaskId: taskMap.get(st.id) } as ITaskSubTaskAttribute)));
                 }
             }
 
+            await TaskSubTaskModel.bulkCreate(bulkCreate);
+
             await t?.commit();
 
-            return await SectionModel.findOne({
-                where: {
-                    id: { [Op.eq]: newSection.id }
-                }, include: [SectionModel.associations.tasks]
-            }) as SectionModel;
+            return await this.getSection(userId, projId, newSection.id) as SectionModel;
         } catch (e) {
             await t?.rollback();
         }

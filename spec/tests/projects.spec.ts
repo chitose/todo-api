@@ -119,7 +119,7 @@ describe('ProjectRouter', () => {
                 const proj = res.body as IProjectAttribute;
                 expect(proj.id).toBeGreaterThan(0);
                 callGetProjectApi(user2.auth!, proj.id).end((err, res) => {
-                    expect(res.body).toBe('');
+                    expect(res.body).toBeNull();
                     done();
                 });
             });

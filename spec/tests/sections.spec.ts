@@ -178,7 +178,7 @@ describe('ProjectRouter - Sections', () => {
 
         it('should return null when retrieve section of project where user is not the collaborator.', done => {
             callGetSectionApi(user2.auth!, project.id, section.id).end((err, res) => {
-                expect(res.body).toBe('');
+                expect(res.body).toBeNull();
                 done();
             });
         });
@@ -372,12 +372,6 @@ describe('ProjectRouter - Sections', () => {
                 const section = res.body as SectionModel;
                 expect(section.tasks).toBeDefined();
                 expect(section.tasks?.length).toBe(3);
-                const pTask = section.tasks?.find(t => !t.parentTaskId);
-                const cTask = section.tasks?.find(t => t.parentTaskId === pTask?.id);
-                const gcTask = section.tasks?.find(t => t.parentTaskId === cTask?.id);
-                expect(cTask).toBeDefined();
-                expect(pTask).toBeDefined();
-                expect(gcTask).toBeDefined();
                 done();
             });
         });

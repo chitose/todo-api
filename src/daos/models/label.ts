@@ -47,5 +47,5 @@ LabelModel.init(
         ]
     });
 
-LabelModel.belongsTo(UserModel);
+LabelModel.belongsTo(UserModel, { foreignKey: 'userId' });
 UserModel.hasMany(LabelModel, { foreignKey: 'userId' });

@@ -1,7 +1,7 @@
 import './loadEnv';
 
 import { UserModel } from '@daos/models';
-import { getUserRepository } from '@daos/repositories';
+import { getLabelRepository, getUserRepository } from '@daos/repositories';
 import db from '@daos/sqlite3/sqlite-dao';
 import logger from '@shared/logger';
 import commandLineArgs from 'command-line-args';
@@ -16,6 +16,7 @@ let user2: UserWithJwt;
 let user3: UserWithJwt;
 
 export async function prepareTestData() {
+    const labelRepo = getLabelRepository();
     // generate test user
     const userRepo = getUserRepository();
 
@@ -48,6 +49,10 @@ export async function prepareTestData() {
     user3.auth = jwt.sign({
         id: user3.id
     }, appSecret);
+
+    await labelRepo.createLabel(user1.id, 'label 1');
+    await labelRepo.createLabel(user2.id, 'label 1');
+    await labelRepo.createLabel(user3.id, 'label 1');
 }
 
 export { user1, user2, user3 }

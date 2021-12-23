@@ -2,6 +2,7 @@ import db from '@daos/sqlite3/sqlite-dao';
 import { DataTypes, Model, Optional } from 'sequelize';
 
 import { autoIncrementIdColumn } from './columns';
+import { UserModel } from './user';
 
 export enum ViewType {
     List = 1,
@@ -24,6 +25,8 @@ export class ProjectModel extends Model<IProjectAttribute, IProjectCreationAttri
     public name!: string;
     public view!: ViewType;
     public archived!: boolean;
+
+    public readonly users?: UserModel[];
 }
 
 export const PROJECTS_TABLE = 'projects';

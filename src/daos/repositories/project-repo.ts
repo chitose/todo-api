@@ -1,20 +1,16 @@
 import {
-    IProjectAttribute,
     IProjectCreationAttributes,
-    IUserProjectsAttribute,
     ProjectModel,
-    PROJECTS_TABLE,
-    USER_PROJECTS_TABLE,
+    ProjectUserAssociation,
+    UserModel,
     UserProjectsModel,
 } from '@daos/models';
-import { getKey } from '@shared/utils';
-import { QueryTypes } from 'sequelize';
 
 export interface IProjectRepository {
     /**
      * Creates new project     
      */
-    createProject(userId: string, proj: IProjectCreationAttributes): Promise<ProjectModel>;
+    createProject(userId: string, proj: IProjectCreationAttributes): Promise<ProjectModel | null>;
 
     /**
      * Shares project with others.
@@ -54,27 +50,36 @@ class ProjectRepository implements IProjectRepository {
     }
 
     async getUserProjects(userId: string): Promise<ProjectModel[]> {
-        return await ProjectModel.sequelize?.query(`
-            SELECT p.*
-            FROM ${PROJECTS_TABLE} p LEFT JOIN ${USER_PROJECTS_TABLE} up
-            ON p.${getKey<IProjectAttribute>('id')} = up.${getKey<IUserProjectsAttribute>('projectId')}
-            WHERE up.${getKey<IUserProjectsAttribute>('userId')} = :userId
-        `, {
-            model: ProjectModel,
-            mapToModel: true,
-            replacements: {
-                userId: userId
+        return ProjectModel.findAll({
+            include: {
+                model: UserModel,
+                where: {
+                    id: userId
+                },
+                as: ProjectUserAssociation.as,
+                attributes: [],
+                through: {
+                    attributes: []
+                }
             }
-        }) as ProjectModel[];
+        });
     }
 
-    async createProject(userId: string, proj: IProjectCreationAttributes): Promise<ProjectModel> {
-        const rProj = await ProjectModel.create(proj);
-        await UserProjectsModel.create(
-            {
-                userId: userId, projectId: rProj.id
-            });
-        return await this.get(userId, rProj.id) as ProjectModel;
+    async createProject(userId: string, proj: IProjectCreationAttributes): Promise<ProjectModel | null> {
+        const t = await ProjectModel.sequelize?.transaction();
+        try {
+            const rProj = await ProjectModel.create(proj);
+
+            await UserProjectsModel.create(
+                {
+                    userId: userId, projectId: rProj.id
+                });
+            await t?.commit();
+            return rProj;
+        } catch {
+            await t?.rollback();
+            return null;
+        }
     }
 
     async shareProject(userId: string, projId: number, sharedWithUsers: string[]): Promise<void> {
@@ -93,23 +98,21 @@ class ProjectRepository implements IProjectRepository {
     }
 
     async get(userId: string, projId: number): Promise<ProjectModel | null> {
-        const proj = await ProjectModel.sequelize?.query(`
-        SELECT p.* 
-        FROM ${PROJECTS_TABLE} p
-        LEFT JOIN ${USER_PROJECTS_TABLE} up on p.${getKey<IProjectAttribute>('id')} = up.${getKey<IUserProjectsAttribute>('projectId')}
-        WHERE up.${getKey<IUserProjectsAttribute>('userId')} = :userId
-        AND up.${getKey<IUserProjectsAttribute>('projectId')} = :projectId
-        `, {
-            model: ProjectModel,
-            mapToModel: true,
-            type: QueryTypes.SELECT,
-            replacements: {
-                userId: userId,
-                projectId: projId
+        return ProjectModel.findOne({
+            where: {
+                id: projId
+            },
+            include: {
+                model: UserModel,
+                required: true,
+                where: {
+                    id: userId
+                },
+                as: ProjectUserAssociation.as,
+                attributes: [],
+                through: { attributes: [] }
             }
-        }) as ProjectModel[];
-
-        return proj[0];
+        });
     }
 }
 

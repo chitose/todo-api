@@ -1,14 +1,21 @@
 import {
-    ITaskAttribute,
+    IProjectAttribute,
     ITaskCreationAttributes,
-    IUserProjectsAttribute,
-    TASK_TABLE,
+    ITaskLabelAttribute,
+    LabelModel,
+    ProjectModel,
+    ProjectUserAssociation,
+    TaskLabelAssociation,
+    TaskLabelModel,
     TaskModel,
     TaskPriority,
-    USER_PROJECTS_TABLE,
+    TaskProjectAssociation,
+    TaskSubTaskAssociation,
+    TaskSubTaskModel,
+    UserModel,
 } from '@daos/models';
 import { getKey } from '@shared/utils';
-import { Op, QueryTypes } from 'sequelize';
+import { Includeable, Op } from 'sequelize';
 
 import { IProjectRepository } from './project-repo';
 
@@ -17,7 +24,7 @@ export interface ITaskRepository {
 
     moveTask(userId: string, projectId: number, targetProjectId: number, targetSectId?: number): Promise<void>;
 
-    getTask(userId: string, taskId: number): Promise<TaskModel>;
+    getTask(userId: string, taskId: number): Promise<TaskModel | null>;
 
     createTask(userId: string, taskProp: ITaskCreationAttributes): Promise<TaskModel>;
 
@@ -40,23 +47,47 @@ export interface ITaskRepository {
 
 class TaskRepository implements ITaskRepository {
     constructor(private projectRepo: IProjectRepository) { }
-    async getTasks(userId: string, projectId: number): Promise<TaskModel[]> {
-        return await TaskModel.sequelize?.query(`
-        SELECT t.* FROM ${TASK_TABLE} t
-        LEFT JOIN ${USER_PROJECTS_TABLE} up
-        ON t.${getKey<ITaskAttribute>('projectId')} = up.${getKey<IUserProjectsAttribute>('projectId')}
-        WHERE t.${getKey<ITaskAttribute>('projectId')} = :projectId
-        AND up.${getKey<IUserProjectsAttribute>('userId')} = :userId
-        `,
+    private getCommonUserInclude(userId: string): Includeable[] {
+        return [
             {
-                type: QueryTypes.SELECT,
-                model: TaskModel,
-                mapToModel: true,
-                replacements: {
-                    userId,
-                    projectId
+                model: LabelModel,
+                as: TaskLabelAssociation.as,
+                attributes: ['id', 'title'],
+                through: {
+                    attributes: []
                 }
-            }) as TaskModel[];
+            },
+            {
+                model: TaskModel,
+                as: TaskSubTaskAssociation.as
+            },
+            {
+                model: ProjectModel,
+                required: true,
+                as: TaskProjectAssociation.as,
+                attributes: [getKey<IProjectAttribute>('id')],
+                include: [
+                    {
+                        model: UserModel,
+                        required: true,
+                        as: ProjectUserAssociation.as,
+                        where: {
+                            id: userId
+                        },
+                        attributes: []
+                    }
+                ]
+            }
+        ];
+    }
+
+    async getTasks(userId: string, projectId: number): Promise<TaskModel[]> {
+        return TaskModel.findAll({
+            where: {
+                projectId: projectId
+            },
+            include: this.getCommonUserInclude(userId)
+        });
     }
 
     async moveTask(userId: string, projectId: number, targetProjectId: number, targetSectionId?: number): Promise<void> {
@@ -106,19 +137,15 @@ class TaskRepository implements ITaskRepository {
         }
     }
 
-    async getTask(userId: string, taskId: number): Promise<TaskModel> {
-        return (await TaskModel.sequelize?.query(`
-        SELECT t.* from ${TASK_TABLE} t left join ${USER_PROJECTS_TABLE} up on t.projectId = up.projectId
-        WHERE t.id = :taskId AND up.userId = :userId
-        `, {
-            model: TaskModel,
-            mapToModel: true,
-            type: QueryTypes.SELECT,
-            replacements: {
-                userId,
-                taskId
-            }
-        }) as TaskModel[])[0];
+    async getTask(userId: string, taskId: number): Promise<TaskModel | null> {
+        return TaskModel.findOne({
+            where: {
+                id: {
+                    [Op.eq]: taskId
+                }
+            },
+            include: this.getCommonUserInclude(userId)
+        });
     }
 
     async createTask(userId: string, taskProp: ITaskCreationAttributes): Promise<TaskModel> {
@@ -155,8 +182,20 @@ class TaskRepository implements ITaskRepository {
             }
             taskProp.taskOrder = taskOrder + 1;
         }
+        const { parentTaskId, labels, ...createTaskProps } = taskProp;
+        const task = await TaskModel.create(createTaskProps);
 
-        return TaskModel.create(taskProp);
+        if (labels) {
+            await TaskLabelModel.bulkCreate(labels.map(l => ({ taskId: task.id, labelId: l.id } as ITaskLabelAttribute)));
+        }
+
+        if (parentTaskId) {
+            await TaskSubTaskModel.create({
+                taskId: parentTaskId,
+                subTaskId: task.id
+            });
+        }
+        return this.getTask(userId, task.id) as unknown as TaskModel;
     }
 
     async updateTask(userId: string, taskId: number, taskProp: Partial<ITaskCreationAttributes>): Promise<TaskModel> {
@@ -165,7 +204,7 @@ class TaskRepository implements ITaskRepository {
             throw new Error('Task not found');
         }
 
-        const { title, description, assignTo, dueDate, priority, parentTaskId, projectId, taskOrder } = taskProp;
+        const { title, description, assignTo, dueDate, priority, projectId, taskOrder } = taskProp;
         const updateProp = {} as ITaskCreationAttributes;
 
         if (title !== undefined) {
@@ -188,10 +227,6 @@ class TaskRepository implements ITaskRepository {
             updateProp.priority = priority;
         }
 
-        if (parentTaskId !== undefined) {
-            updateProp.parentTaskId = parentTaskId;
-        }
-
         if (projectId !== undefined) {
             updateProp.projectId = projectId;
         }
@@ -207,7 +242,7 @@ class TaskRepository implements ITaskRepository {
                 }
             });
 
-        return this.getTask(userId, taskId);
+        return this.getTask(userId, taskId) as unknown as TaskModel;
     }
 
     async deleteTask(userId: string, taskId: number): Promise<void> {
@@ -238,7 +273,7 @@ class TaskRepository implements ITaskRepository {
 
     async setTaskDueDate(userId: string, taskId: number, dueDate: Date): Promise<TaskModel> {
         return this.updateTask(userId, taskId, { dueDate: dueDate });
-    }    
+    }
 
     async duplicateTask(userId: string, taskId: number): Promise<TaskModel> {
         const task = await this.getTask(userId, taskId);
@@ -255,12 +290,15 @@ class TaskRepository implements ITaskRepository {
             dueDate: task.dueDate,
             projectId: task.projectId,
             sectionId: task.sectionId,
-            priority: task.priority,
-            parentTaskId: task.parentTaskId
+            priority: task.priority
         });
     }
 }
 
 export function createTaskRepository(projectRepo: IProjectRepository): ITaskRepository {
     return new TaskRepository(projectRepo);
+}
+
+function ILabelAttribute(arg0: string) {
+    throw new Error('Function not implemented.');
 }

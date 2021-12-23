@@ -75,10 +75,12 @@ describe('ProjectRouter - Tasks', () => {
                 title: 'Test task',
                 description: 'Test desc',
                 projectId: project.id,
+                labels: [{ id: 1 }],
                 completed: false
             }).end((err, res) => {
                 const t = res.body as ITaskAttribute;
                 expect(res.status).toBe(StatusCodes.CREATED);
+                expect(t.labels?.length).toBe(1);
                 expect(t.id).toBeGreaterThan(0);
                 expect(t.taskOrder).toBeGreaterThan(0);
                 done();
@@ -216,7 +218,7 @@ describe('ProjectRouter - Tasks', () => {
             }).end((err, res) => {
                 const task = res.body as ITaskAttribute;
                 callGetTaskApi(user2.auth!, task.projectId, task.id).end((err1, res1) => {
-                    expect(res1.body).toBe('');
+                    expect(res1.body).toBeNull();
                     done();
                 });
             });
@@ -311,7 +313,7 @@ describe('ProjectRouter - Tasks', () => {
             assignTo: user2.id
         };
 
-        it(`it should return status ${StatusCodes.OK} when task is updated successfully`, done => {            
+        it(`it should return status ${StatusCodes.OK} when task is updated successfully`, done => {
             callUpdateTaskApi(user1.auth!, project.id, task.id, updateProp).end((err, res) => {
                 expect(res.status).toBe(StatusCodes.OK);
                 const utask = res.body as ITaskAttribute;
@@ -324,9 +326,9 @@ describe('ProjectRouter - Tasks', () => {
             });
         });
 
-        it(`it should return status ${StatusCodes.BAD_REQUEST} when task is updated by non project collaborator`, done => {            
+        it(`it should return status ${StatusCodes.BAD_REQUEST} when task is updated by non project collaborator`, done => {
             callUpdateTaskApi(user2.auth!, project.id, task.id, updateProp).end((err, res) => {
-                expect(res.status).toBe(StatusCodes.BAD_REQUEST);                
+                expect(res.status).toBe(StatusCodes.BAD_REQUEST);
                 done();
             });
         });
