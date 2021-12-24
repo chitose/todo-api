@@ -10,27 +10,24 @@ import { RouteParams } from './route-params';
 const sectionRepo = getSectionRepository();
 
 export async function getSections(req: Request, res: Response) {
-    const projectId = Number(req.params[RouteParams.ProjectId]);
+    const { projectId } = new RouteParams(req);
     const user = req.user as IUserAttribute;
     const sections = await sectionRepo.getSections(user.id, projectId);
     return res.status(StatusCodes.OK).json(sections);
 }
 
 export async function getSection(req: Request, res: Response) {
-    const projectId = Number(req.params[RouteParams.ProjectId]);
-    const sectId = Number(req.params[RouteParams.SectionId]);
+    const { projectId, sectionId } = new RouteParams(req);
     const user = req.user as IUserAttribute;
-    const section = await sectionRepo.getSection(user.id, projectId, sectId);
+    const section = await sectionRepo.getSection(user.id, projectId, sectionId);
     return res.status(StatusCodes.OK).json(section);
 }
 
 export async function swapSectionOrder(req: Request, res: Response) {
-    const projectId = Number(req.params[RouteParams.ProjectId]);
-    const sectId = Number(req.params[RouteParams.SectionId]);
-    const targetSectId = Number(req.params[RouteParams.TargetSectionId]);
+    const { projectId, sectionId, targetSectionId } = new RouteParams(req);
     const user = req.user as IUserAttribute;
     try {
-        const sections = await sectionRepo.swapOrder(user.id, projectId, sectId, targetSectId);
+        const sections = await sectionRepo.swapOrder(user.id, projectId, sectionId, targetSectionId);
         return res.status(StatusCodes.OK).json(sections);
     } catch (e: any) {
         return res.status(StatusCodes.BAD_REQUEST).send({ message: e.message });
@@ -38,11 +35,11 @@ export async function swapSectionOrder(req: Request, res: Response) {
 }
 
 export async function createSection(req: Request, res: Response) {
-    const projectId = req.params[RouteParams.ProjectId];
+    const { projectId } = new RouteParams(req);
     const user = req.user as IUserAttribute;
     const json = req.body as Partial<ISectionCreationAttribute>;
     try {
-        const sect = await sectionRepo.addSection(user.id, Number(projectId), json.name!);
+        const sect = await sectionRepo.addSection(user.id, projectId, json.name!);
         return res.status(StatusCodes.CREATED).json(sect);
     } catch (e: any) {
         return res.status(StatusCodes.BAD_REQUEST).send({
@@ -52,12 +49,11 @@ export async function createSection(req: Request, res: Response) {
 }
 
 export async function updateSection(req: Request, res: Response) {
-    const projectId = req.params[RouteParams.ProjectId];
-    const sectId = req.params[RouteParams.SectionId];
+    const { projectId, sectionId } = new RouteParams(req);
     const user = req.user as IUserAttribute;
     const json = req.body as Partial<ISectionCreationAttribute>;
     try {
-        const sect = await sectionRepo.updateSection(user.id, Number(projectId), Number(sectId), json);
+        const sect = await sectionRepo.updateSection(user.id, projectId, sectionId, json);
         return res.status(StatusCodes.OK).json(sect);
     } catch (e: any) {
         return res.status(StatusCodes.BAD_REQUEST).send({
@@ -67,11 +63,10 @@ export async function updateSection(req: Request, res: Response) {
 }
 
 export async function deleteSection(req: Request, res: Response) {
-    const projectId = req.params[RouteParams.ProjectId];
-    const sectId = req.params[RouteParams.SectionId];
+    const { projectId, sectionId } = new RouteParams(req);
     const user = req.user as IUserAttribute;
     try {
-        await sectionRepo.deleteSection(user.id, Number(projectId), Number(sectId));
+        await sectionRepo.deleteSection(user.id, projectId, sectionId);
         return res.status(StatusCodes.NO_CONTENT).send();
     } catch (e: any) {
         return res.status(StatusCodes.BAD_REQUEST).send({
@@ -81,11 +76,10 @@ export async function deleteSection(req: Request, res: Response) {
 }
 
 export async function duplicateSection(req: Request, res: Response) {
-    const projectId = req.params[RouteParams.ProjectId];
-    const sectId = req.params[RouteParams.SectionId];
+    const { projectId, sectionId } = new RouteParams(req);
     const user = req.user as IUserAttribute;
     try {
-        const sect = await sectionRepo.duplicateSection(user.id, Number(projectId), Number(sectId));
+        const sect = await sectionRepo.duplicateSection(user.id, projectId, sectionId);
         return res.status(StatusCodes.CREATED).json(sect);
     } catch (e: any) {
         return res.status(StatusCodes.BAD_REQUEST).send({

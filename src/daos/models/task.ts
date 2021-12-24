@@ -25,6 +25,7 @@ export interface ITaskCreationAttributes {
     taskOrder?: number;
     labels?: Partial<ILabelAttribute>[];
     parentTaskId?: number;
+    subTasks?: ITaskAttribute[];
 }
 export interface ITaskAttribute extends ITaskCreationAttributes {
     id: number;

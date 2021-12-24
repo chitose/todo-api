@@ -70,7 +70,11 @@ export function configureAuthentication(app: express.Express, appSecret: string)
     /* VERIFY JWT TOKEN */
     app.use(function (req, res, next) {
         if (req.headers && req.headers.authorization) {
-            jwt.verify(req.headers.authorization, appSecret,
+            let token = req.headers.authorization;
+            if (token.indexOf('Bearer ') === 0) {
+                token = token.split(' ')[1];
+            }
+            jwt.verify(token, appSecret,
                 function (err, decode) {
                     const userRepo = getUserRepository();
                     if (err || !decode) {

@@ -7,31 +7,14 @@ import {
 } from '@daos/models';
 
 export interface IProjectRepository {
-    /**
-     * Creates new project     
-     */
     createProject(userId: string, proj: IProjectCreationAttributes): Promise<ProjectModel | null>;
 
-    /**
-     * Shares project with others.
-     */
     shareProject(userId: string, projId: number, sharedWithUsers: string[]): Promise<void>;
 
-    /**
-     * Gets project by id
-     */
     get(userId: string, projId: number): Promise<ProjectModel | null>;
 
-    /**
-     * Gets all projects where userId is a collaborator
-     */
     getUserProjects(userId: string): Promise<ProjectModel[]>;
 
-    /**
-     * Delete project
-     * @param userId 
-     * @param projId 
-     */
     deleteProject(userId: string, projId: number): Promise<void>;
 }
 
@@ -76,9 +59,9 @@ class ProjectRepository implements IProjectRepository {
                 });
             await t?.commit();
             return rProj;
-        } catch {
+        } catch (e) {
             await t?.rollback();
-            return null;
+            throw e;
         }
     }
 

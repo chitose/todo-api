@@ -1,9 +1,11 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { IProjectCreationAttributes, IUserAttribute } from '@daos/models';
+import { IProjectCreationAttributes, IUserAttribute, ViewType } from '@daos/models';
 import { getProjectRepository } from '@daos/repositories';
+import { getKey } from '@shared/utils';
 import { Request, Response, Router } from 'express';
 import { StatusCodes } from 'http-status-codes';
 
+import { addProjectComment, addTaskComment, getProjectComments, getTaskComments } from './comment';
 import { RouteParams } from './route-params';
 import {
     createSection,
@@ -33,6 +35,20 @@ import {
 
 const repo = getProjectRepository();
 
+/**
+ * Error response
+ * @typedef {object} ErrorResponse
+ * @property {string} message - The error message.
+ */
+
+/**
+ * PUT /api/projects
+ * @summary Create a new project.
+ * @param {ProjectCreation} request.body.required - project info
+ * @return {} 201 - success response
+ * @return {ErrorResponse} 428 - Validation error response
+ * @security jwt
+ */
 async function createProject(req: Request, res: Response) {
     const user = req.user as IUserAttribute;
     const proj = req.body as unknown as IProjectCreationAttributes;
@@ -40,30 +56,66 @@ async function createProject(req: Request, res: Response) {
         return res.status(StatusCodes.PRECONDITION_REQUIRED)
             .send({ message: 'name is required.' });
     }
+    if (proj.view === undefined) {
+        return res.status(StatusCodes.PRECONDITION_REQUIRED)
+            .send({ message: 'view is required.' });
+    }
+    if (proj.view !== ViewType.List && proj.view !== ViewType.Dashboard) {
+        return res.status(StatusCodes.PRECONDITION_REQUIRED)
+            // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+            .send({ message: `${proj.view} is not valid view type.` });
+    }
     const createdProj = await repo.createProject(user.id, proj);
     return res.status(StatusCodes.CREATED).json(createdProj);
 }
 
+/**
+ * GET /api/projects
+ * @summary Get all projects of current user
+ * @return {array<Project>} 200 - success response
+ * @security jwt
+ */
 async function getProject(req: Request, res: Response) {
-    const projectId = req.params[RouteParams.ProjectId];
+    const { projectId } = new RouteParams(req);
     const user = req.user as IUserAttribute;
     const proj = await repo.get(user.id, Number(projectId));
     return res.status(StatusCodes.OK).json(proj);
 }
 
+/**
+ * GET /api/projects/{id}
+ * @summary Get project by id
+ * @param {number} id.path.required - The project id
+ * @return {Project} 200 - success response
+ * @security jwt 
+ */
 async function getUserProjects(req: Request, res: Response) {
     const user = req.user as IUserAttribute;
     const projects = await repo.getUserProjects(user.id);
     return res.status(StatusCodes.OK).json(projects);
 }
 
+/**
+ * Share project request
+ * @typedef {object} ShareProjectRequest
+ * @property {array<string>} users.required - Lists of user ids
+ */
 export interface IShareProjectRequestBody {
     users: string[];
 }
 
+/**
+ * POST /api/projects/{id}
+ * @summary Share project with other users
+ * @param {number} id.path.required - The project id
+ * @param {ShareProjectRequest} request.body.required - request info
+ * @return {string} 200 - success response
+ * @return {ErrorResponse} 400 - Bad request response
+ * @security jwt
+ */
 async function shareProject(req: Request, res: Response) {
     const user = req.user as IUserAttribute;
-    const projectId = req.params[RouteParams.ProjectId];
+    const { projectId } = new RouteParams(req);
     const { users } = req.body as IShareProjectRequestBody;
 
     try {
@@ -76,9 +128,17 @@ async function shareProject(req: Request, res: Response) {
     }
 }
 
+/**
+ * DELETE /api/projects/{id}
+ * @summary Delete a project
+ * @param {number} id.path.required - The project id
+ * @return {string} 204 - success response
+ * @return {ErrorResponse} 400 - Bad request response
+ * @security jwt
+ */
 async function deleteProject(req: Request, res: Response) {
     const user = req.user as IUserAttribute;
-    const projectId = req.params[RouteParams.ProjectId];
+    const { projectId } = new RouteParams(req);
     try {
         await repo.deleteProject(user.id, Number(projectId));
         return res.status(StatusCodes.NO_CONTENT).send();
@@ -97,7 +157,7 @@ export class ProjectRouteUrlBuilder {
     }
 
     public create(): string {
-        return this.getUrl('/create');
+        return this.getUrl('');
     }
 
     public getUserProjects() {
@@ -105,7 +165,7 @@ export class ProjectRouteUrlBuilder {
     }
 
     public getProjectById(id?: string | number) {
-        return this.getUrl(`/${id || (':' + RouteParams.ProjectId)}`);
+        return this.getUrl(`/${id || (':' + getKey<RouteParams>('projectId'))}`);
     }
 
     public shareProject(id?: string | number) {
@@ -125,7 +185,7 @@ export class ProjectRouteUrlBuilder {
     }
 
     public getSection(projectId?: number | string, sectId?: number | string) {
-        return `${this.getProjectById(projectId)}/section/${sectId ? sectId : ':' + RouteParams.SectionId}`;
+        return `${this.getProjectById(projectId)}/section/${sectId ? sectId : ':' + getKey<RouteParams>('sectionId')}`;
     }
 
     public updateSection(projId?: string | number, sectionId?: string | number) {
@@ -141,7 +201,7 @@ export class ProjectRouteUrlBuilder {
     }
 
     public swapSectionOrder(projectId?: number | string, sourceSectId?: number | string, targetSectId?: number | string): string {
-        return `${this.getSection(projectId, sourceSectId)}/swap/${targetSectId ? targetSectId : ':' + RouteParams.TargetSectionId}`;
+        return `${this.getSection(projectId, sourceSectId)}/swap/${targetSectId ? targetSectId : ':' + getKey<RouteParams>('targetSectionId')}`;
     }
 
     public createTask(projId?: string | number) {
@@ -158,7 +218,7 @@ export class ProjectRouteUrlBuilder {
     }
 
     public getTask(projectId?: number | string, taskId?: number | string) {
-        return `${this.getProjectById(projectId)}/task/${(taskId ? taskId : ':' + RouteParams.TaskId)}`;
+        return `${this.getProjectById(projectId)}/task/${(taskId ? taskId : ':' + getKey<RouteParams>('taskId'))}`;
     }
 
     public duplicateTask(projectId?: number | string, taskId?: number | string) {
@@ -166,7 +226,7 @@ export class ProjectRouteUrlBuilder {
     }
 
     public swapTaskOrder(projectId?: number | string, taskId?: number | string, targetTaskId?: number | string) {
-        return `${this.getTask(projectId, taskId)}/swapOrder/${targetTaskId ? targetTaskId : ':' + RouteParams.TargetTaskId}`;
+        return `${this.getTask(projectId, taskId)}/swapOrder/${targetTaskId ? targetTaskId : ':' + getKey<RouteParams>('targetTaskId')}`;
     }
 
     public deleteTask(projectId?: number | string, taskId?: number | string) {
@@ -193,11 +253,27 @@ export class ProjectRouteUrlBuilder {
         return `${this.getTask(projectId, taskId)}/priority`;
     }
     public moveTask(projectId?: number | string, taskId?: number | string, targetProjectId?: number | string) {
-        return `${this.getTask(projectId, taskId)}/move/${targetProjectId ? targetProjectId : ':' + RouteParams.TargetProjectId}`;
+        return `${this.getTask(projectId, taskId)}/move/${targetProjectId ? targetProjectId : ':' + getKey<RouteParams>('targetProjectId')}`;
     }
 
     public moveTaskToSection(projectId?: number | string, taskId?: number | string, targetProjectId?: number | string, sectId?: number | string) {
-        return `${this.moveTask(projectId, taskId, targetProjectId)}/${sectId ? sectId : ':' + RouteParams.TargetSectionId}`;
+        return `${this.moveTask(projectId, taskId, targetProjectId)}/${sectId ? sectId : ':' + getKey<RouteParams>('targetSectionId')}`;
+    }
+
+    public addProjectComment(projectId?: number | string) {
+        return `${this.getProjectById(projectId)}/comment`;
+    }
+
+    public getProjectComments(projectId?: number | string) {
+        return this.addProjectComment(projectId);
+    }
+
+    public addTaskComment(projectId?: number | string, taskId?: number | string) {
+        return `${this.getTask(projectId, taskId)}/comment`;
+    }
+
+    public getTaskComments(projectId?: number | string, taskId?: number | string) {
+        return this.addTaskComment(projectId, taskId);
     }
 
     private getUrl(rel: string) {
@@ -205,15 +281,19 @@ export class ProjectRouteUrlBuilder {
     }
 }
 
+
 const projectRoutes = new ProjectRouteUrlBuilder();
 
 // Project-route
 const projectRouter = Router();
+
 projectRouter.put(projectRoutes.create(), createProject);
 projectRouter.get(projectRoutes.getUserProjects(), getUserProjects);
 projectRouter.get(projectRoutes.getProjectById(), getProject);
 projectRouter.post(projectRoutes.shareProject(), shareProject);
 projectRouter.delete(projectRoutes.deleteProject(), deleteProject);
+projectRouter.put(projectRoutes.addProjectComment(), addProjectComment);
+projectRouter.get(projectRoutes.getProjectComments(), getProjectComments);
 
 // section
 projectRouter.get(projectRoutes.getSection(), getSection);
@@ -240,5 +320,7 @@ projectRouter.post(projectRoutes.completeTask(), completeTask);
 projectRouter.post(projectRoutes.updateTask(), updateTask);
 projectRouter.delete(projectRoutes.deleteTask(), deleteTask);
 projectRouter.post(projectRoutes.assignTask(), assignTask);
+projectRouter.put(projectRoutes.addTaskComment(), addTaskComment);
+projectRouter.get(projectRoutes.getTaskComments(), getTaskComments);
 
 export default projectRouter;

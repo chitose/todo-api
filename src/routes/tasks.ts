@@ -12,7 +12,7 @@ const taskRepo = getTaskRepository();
 
 export async function getTasks(req: Request, res: Response) {
     const user = req.user as IUserAttribute;
-    const projectId = Number(req.params[RouteParams.ProjectId]);
+    const { projectId } = new RouteParams(req);
     const tasks = await taskRepo.getTasks(user.id, projectId);
     return res.status(StatusCodes.OK).json(tasks);
 }
@@ -20,11 +20,9 @@ export async function getTasks(req: Request, res: Response) {
 //     moveSectionTasks(userId: string, projectId: number, sectId: number, targetProjectId: number): Promise<void>;
 export async function moveTask(req: Request, res: Response) {
     const user = req.user as IUserAttribute;
-    const projectId = Number(req.params[RouteParams.ProjectId]);
-    const targetProjectId = Number(req.params[RouteParams.TargetProjectId]);
-    const targetSectionId = req.params[RouteParams.TargetSectionId];
+    const { projectId, targetProjectId, targetSectionId } = new RouteParams(req);
     try {
-        await taskRepo.moveTask(user.id, projectId, targetProjectId, targetSectionId ? Number(targetSectionId) : undefined);
+        await taskRepo.moveTask(user.id, projectId, targetProjectId, targetSectionId);
     } catch (e: any) {
         return res.status(StatusCodes.BAD_REQUEST).send({ message: e.message });
     }
@@ -33,7 +31,7 @@ export async function moveTask(req: Request, res: Response) {
 //     getTask(userId: string, taskId: number): Promise<TaskModel>;
 export async function getTask(req: Request, res: Response) {
     const user = req.user as IUserAttribute
-    const taskId = Number(req.params[RouteParams.TaskId]);
+    const { taskId } = new RouteParams(req);
     const task = await taskRepo.getTask(user.id, taskId);
     return res.status(StatusCodes.OK).json(task);
 }
@@ -41,7 +39,7 @@ export async function getTask(req: Request, res: Response) {
 // swapOrder(userId: string, taskId: number, targetTaskId: number): Promise<TaskModel[]>;
 export async function swapTaskOrder(req: Request, res: Response) {
     const user = req.user as IUserAttribute;
-    const taskId = Number(req.params[RouteParams.TaskId]);
+    const { taskId } = new RouteParams(req);
     const newOrder = Number(req.body);
     try {
         const t = await taskRepo.swapOrder(user.id, taskId, newOrder);
@@ -54,7 +52,7 @@ export async function swapTaskOrder(req: Request, res: Response) {
 //     updateTask(userId: string, taskId: number, taskProp: ITaskCreationAttributes): Promise<TaskModel>;
 export async function updateTask(req: Request, res: Response) {
     const user = req.user as IUserAttribute;
-    const taskId = Number(req.params[RouteParams.TaskId]);
+    const { taskId } = new RouteParams(req);
     const taskProp = req.body as ITaskCreationAttributes;
     try {
         const t = await taskRepo.updateTask(user.id, taskId, taskProp);
@@ -67,7 +65,7 @@ export async function updateTask(req: Request, res: Response) {
 //     deleteTask(userId: string, taskId: number): Promise<void>;
 export async function deleteTask(req: Request, res: Response) {
     const user = req.user as IUserAttribute;
-    const taskId = Number(req.params[RouteParams.TaskId]);
+    const { taskId } = new RouteParams(req);
     try {
         await taskRepo.deleteTask(user.id, taskId);
         return res.status(StatusCodes.NO_CONTENT).send();
@@ -79,7 +77,7 @@ export async function deleteTask(req: Request, res: Response) {
 //     assignTask(userId: string, taskId: number, assignToUserId: string): Promise<TaskModel>;
 export async function assignTask(req: Request, res: Response) {
     const user = req.user as IUserAttribute;
-    const taskId = Number(req.params[RouteParams.TaskId]);
+    const { taskId } = new RouteParams(req);
     const targetUser = req.body;
     try {
         const task = await taskRepo.assignTask(user.id, taskId, targetUser);
@@ -92,7 +90,7 @@ export async function assignTask(req: Request, res: Response) {
 //     setTaskPriority(userId: string, taskId: number, priority: TaskPriority): Promise<TaskModel>;
 export async function setTaskPriority(req: Request, res: Response) {
     const user = req.user as IUserAttribute;
-    const taskId = Number(req.params[RouteParams.TaskId]);
+    const { taskId } = new RouteParams(req);
     try {
         if (!req.body) {
             throw new Error('Missing priority value');
@@ -108,7 +106,7 @@ export async function setTaskPriority(req: Request, res: Response) {
 //     completeTask(userId: string, taskId: number): Promise<TaskModel>;
 export async function completeTask(req: Request, res: Response) {
     const user = req.user as IUserAttribute;
-    const taskId = Number(req.params[RouteParams.TaskId]);
+    const { taskId } = new RouteParams(req);
     try {
         const task = await taskRepo.completeTask(user.id, taskId);
         return res.status(StatusCodes.OK).json(task);
@@ -120,7 +118,7 @@ export async function completeTask(req: Request, res: Response) {
 //     setTaskDueDate(userId: string, taskId: number, dueDate: Date): Promise<TaskModel>;
 export async function setTaskDueDate(req: Request, res: Response) {
     const user = req.user as IUserAttribute;
-    const taskId = Number(req.params[RouteParams.TaskId]);
+    const { taskId } = new RouteParams(req);
     try {
         if (!req.body) {
             throw new Error('Missing due date');
@@ -135,7 +133,7 @@ export async function setTaskDueDate(req: Request, res: Response) {
 //     duplicateTask(userId: string, taskId: number): Promise<TaskModel>;
 export async function duplicateTask(req: Request, res: Response) {
     const user = req.user as IUserAttribute;
-    const taskId = Number(req.params[RouteParams.TaskId]);
+    const { taskId } = new RouteParams(req);
 
     try {
         const dt = await taskRepo.duplicateTask(user.id, taskId);

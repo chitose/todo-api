@@ -6,34 +6,22 @@ import { IProjectRepository } from './project-repo';
 import { ITaskRepository } from './task-repo';
 
 export interface ICommentsRepository {
-    /**
-     * Add comment to project.
-     */
+
     addProjectComment(userId: string, projId: number, comments: string): Promise<CommentModel>;
 
-    /**
-     * Remove project comment
-     */
+
     removeProjectComment(userId: string, projectId: number, cmtId: number): Promise<void>
 
-    /**
-     * Gets project comments
-     */
+
     getProjectComments(userId: string, projectId: number): Promise<CommentModel[]>;
 
-    /**
-     * Add comment to task
-     */
+
     addTaskComment(userId: string, projId: number, taskId: number, comments: string): Promise<CommentModel>;
 
-    /**
-     * Remove a comment from task.
-     */
+
     removeTaskComment(userId: string, taskId: number, cmtId: number): Promise<void>;
 
-    /**
-     * Get task comments.
-     */
+
     getTaskComments(userId: string, projId: number, taskId: number): Promise<CommentModel[]>;
 }
 

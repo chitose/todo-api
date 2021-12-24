@@ -10,66 +10,70 @@ import StatusCodes from 'http-status-codes';
 import morgan from 'morgan';
 
 import { configureAuthentication } from './config/authentication';
+import setupSwagger from './docs/swagger';
 import BaseRouter from './routes';
 
 
-const app = express();
-const { BAD_REQUEST } = StatusCodes;
+export default function createServer(swaggerTestUserToken: string): express.Express {
+    const app = express();
+    const { BAD_REQUEST } = StatusCodes;
 
-const APP_SECRET = process.env.APP_SECRET as string;
+    const APP_SECRET = process.env.APP_SECRET as string;
 
 
-/************************************************************************************
- *                              Set basic express settings
- ***********************************************************************************/
+    /************************************************************************************
+     *                              Set basic express settings
+     ***********************************************************************************/
 
-app.use(session({
-    resave: false,
-    saveUninitialized: true,
-    secret: APP_SECRET
-}));
+    app.use(session({
+        resave: false,
+        saveUninitialized: true,
+        secret: APP_SECRET
+    }));
 
-app.set('json replacer', function (key: string, value: any) {
-    // convert sequalize date string to ISO format
-    if (typeof(value) === 'string')     {
-        const match = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} \+\d{2}:\d{2}$/.exec(value);
-        if (match) {
-            return new Date(value).toISOString();
+    app.set('json replacer', function (key: string, value: any) {
+        // convert sequalize date string to ISO format
+        if (typeof (value) === 'string') {
+            const match = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} \+\d{2}:\d{2}$/.exec(value);
+            if (match) {
+                return new Date(value).toISOString();
+            }
         }
+
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+        return value;
+    });
+
+    app.use(express.json());
+    app.use(express.urlencoded({ extended: true }));
+    app.use(cookieParser());
+    app.use(compression());
+
+    setupSwagger(app, swaggerTestUserToken);
+
+    configureAuthentication(app, APP_SECRET);
+
+    // Show routes called in console during development
+    if (process.env.NODE_ENV === 'development') {
+        app.use(morgan('dev'));
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-    return value;
-});
+    // Security
+    if (process.env.NODE_ENV === 'production') {
+        app.use(helmet());
+    }
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
-app.use(compression());
+    // Add APIs
+    app.use('/api', BaseRouter);
 
-configureAuthentication(app, APP_SECRET);
-
-// Show routes called in console during development
-if (process.env.NODE_ENV === 'development') {
-    app.use(morgan('dev'));
-}
-
-// Security
-if (process.env.NODE_ENV === 'production') {
-    app.use(helmet());
-}
-
-// Add APIs
-app.use('/api', BaseRouter);
-
-// Print API errors
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-    logger.err(err, true);
-    return res.status(BAD_REQUEST).json({
-        error: err.message,
+    // Print API errors
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+        logger.err(err, true);
+        return res.status(BAD_REQUEST).json({
+            error: err.message,
+        });
     });
-});
 
-// Export express instance
-export default app;
+    return app;
+}

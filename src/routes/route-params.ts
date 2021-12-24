@@ -1,10 +1,24 @@
+import { Request } from 'express';
+
 export class RouteParams {
-    public static readonly ProjectId = 'projectId';
-    public static readonly SectionId = 'sectionId';
-    public static readonly TaskId = 'taskId';
-    public static readonly TargetTaskId = 'targetTaskId';
-    public static readonly LabelId = 'labelId';
-    public static readonly CommentId = 'commentId';
-    public static readonly TargetSectionId = 'targetSectionId';
-    public static readonly TargetProjectId: 'targetProjectId';
+    projectId = 0;
+    sectionId = 0;
+    taskId = 0;
+    targetTaskId = 0;
+    labelId = 0;
+    commentId = 0;
+    targetSectionId = 0;
+    targetProjectId = 0;
+
+    constructor(req: Request) {
+        const keys = Object.keys(this);
+        keys.forEach(k => {
+            const kv = req.params[k];
+            if (kv) {
+                (this as any)[k] = Number(kv);
+            } else {
+                (this as any)[k] = undefined;
+            }
+        });
+    }
 }

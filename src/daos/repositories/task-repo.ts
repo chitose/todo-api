@@ -204,7 +204,7 @@ class TaskRepository implements ITaskRepository {
             throw new Error('Task not found');
         }
 
-        const { title, description, assignTo, dueDate, priority, projectId, taskOrder } = taskProp;
+        const { title, description, assignTo, dueDate, labels, priority, projectId, taskOrder } = taskProp;
         const updateProp = {} as ITaskCreationAttributes;
 
         if (title !== undefined) {
@@ -241,6 +241,18 @@ class TaskRepository implements ITaskRepository {
                     id: taskId
                 }
             });
+        if (labels) {
+            const newLabels = labels.filter(l => !task.labels?.find(tl => tl.id === l.id));
+            const removedLabels = task.labels?.filter(l => !labels.find(tl => tl.id === l.id)).map(l => l.id) as number[];
+            await TaskLabelModel.destroy({
+                where: {
+                    taskId: task.id,
+                    labelId: { [Op.in]: removedLabels }
+                }
+            });
+
+            await TaskLabelModel.bulkCreate(newLabels.map(l => ({ taskId: task.id, labelId: l.id } as ITaskLabelAttribute)));
+        }
 
         return this.getTask(userId, taskId) as unknown as TaskModel;
     }
@@ -276,29 +288,45 @@ class TaskRepository implements ITaskRepository {
     }
 
     async duplicateTask(userId: string, taskId: number): Promise<TaskModel> {
-        const task = await this.getTask(userId, taskId);
-        if (!task) {
-            throw new Error('Task not found');
+        // eslint-disable-next-line @typescript-eslint/no-this-alias
+        const self = this;
+        async function dupInternal(userId: string, taskId: number) {
+            const task = await self.getTask(userId, taskId);
+            if (!task) {
+                throw new Error('Task not found');
+            }
+            // using destructuring will not work becaus task is proxy object
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            const dupTask = await self.createTask(userId, {
+                title: task.title,
+                description: task.description,
+                completed: task.completed,
+                assignTo: task.assignTo,
+                dueDate: task.dueDate,
+                projectId: task.projectId,
+                sectionId: task.sectionId,
+                priority: task.priority
+            });
+
+            // parentTask
+            const parentTask = await TaskSubTaskModel.findOne({ where: { subTaskId: task.id } });
+            if (parentTask) {
+                await TaskSubTaskModel.create({ taskId: parentTask.taskId, subTaskId: dupTask.id });
+            }
+            const childTasks = await TaskSubTaskModel.findAll({ where: { taskId: task.id } });
+            if (childTasks) {
+                for (const ct of childTasks) {
+                    await dupInternal(userId, ct.subTaskId);
+                }
+            }
         }
-        // using destructuring will not work becaus task is proxy object
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        return this.createTask(userId, {
-            title: task.title,
-            description: task.description,
-            completed: task.completed,
-            assignTo: task.assignTo,
-            dueDate: task.dueDate,
-            projectId: task.projectId,
-            sectionId: task.sectionId,
-            priority: task.priority
-        });
+
+        await dupInternal(userId, taskId);
+
+        return this.getTask(userId, taskId) as unknown as TaskModel;
     }
 }
 
 export function createTaskRepository(projectRepo: IProjectRepository): ITaskRepository {
     return new TaskRepository(projectRepo);
-}
-
-function ILabelAttribute(arg0: string) {
-    throw new Error('Function not implemented.');
 }

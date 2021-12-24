@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { IProjectAttribute, IProjectCreationAttributes, ViewType } from '@daos/models';
+import { ICommentCreationAttributes, IProjectAttribute, IProjectCreationAttributes, ViewType } from '@daos/models';
 import app from '@server';
 import { pErr } from '@shared/functions';
 import StatusCodes from 'http-status-codes';
@@ -189,6 +189,30 @@ describe('ProjectRouter', () => {
                     done();
                 });
             });
+        });
+    });
+
+    const callAddProjectCommentApi = (auth: string, projectId: number, comment: string) => {
+        return agent.put(projectRouteBuilder.addProjectComment(projectId))
+            .set('Authorization', auth)
+            .type('json').send({ comments: comment } as Partial<ICommentCreationAttributes>);
+    }
+
+    describe(`"PUT:${projectRouteBuilder.addProjectComment()}"`, () => {
+        let project: IProjectAttribute;
+        beforeEach(done => {
+            callCreateProjectApi(user1.auth!, {
+                name: 'Test project',
+                archived: false,
+                view: ViewType.List
+            }).end((err, res) => {
+                project = res.body as IProjectAttribute;
+                done();
+            });
+        });
+
+        it(`it should return ${StatusCodes.CREATED} when comment is added succesfully.`, done => {
+
         });
     });
 });

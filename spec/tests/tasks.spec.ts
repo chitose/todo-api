@@ -251,7 +251,15 @@ describe('ProjectRouter - Tasks', () => {
                         completed: false
                     }).end((err2, res2) => {
                         task = res2.body as ITaskAttribute;
-                        done();
+                        callAddProjectTaskApi(user1.auth!, project.id, {
+                            title: 'Test task child ',
+                            description: 'Test desc',
+                            projectId: project.id,
+                            parentTaskId: task.id,
+                            completed: false
+                        }).end(() => {
+                            done();
+                        });
                     });
                 });
             });
@@ -260,6 +268,8 @@ describe('ProjectRouter - Tasks', () => {
         it(`should return status ${StatusCodes.CREATED} when task is duplicated successfully.`, done => {
             callDuplicateTaskApi(user1.auth!, project.id, task.id).end((err, res) => {
                 expect(res.status).toBe(StatusCodes.CREATED);
+                const t = res.body as ITaskAttribute;
+                expect(t.subTasks).toBeDefined();
                 done();
             });
         });
@@ -295,6 +305,7 @@ describe('ProjectRouter - Tasks', () => {
                         title: 'Test task',
                         description: 'Test desc',
                         projectId: project.id,
+                        labels: [{ id: 1 }, { id: 2 }],
                         completed: false
                     }).end((err2, res2) => {
                         task = res2.body as ITaskAttribute;
@@ -309,6 +320,7 @@ describe('ProjectRouter - Tasks', () => {
             description: 'Updated test task description',
             completed: true,
             dueDate: new Date(),
+            labels: [{ id: 1 }, { id: 3 }],
             priority: TaskPriority.Priority2,
             assignTo: user2.id
         };
@@ -321,6 +333,9 @@ describe('ProjectRouter - Tasks', () => {
                 expect(utask.title).toBe(updateProp.title!);
                 expect(utask.description).toBe(updateProp.description!);
                 expect(utask.assignTo).toBe(updateProp.assignTo);
+                expect(utask.labels?.length).toBe(2);
+                expect(utask.labels?.find(l => l.id === 1)).toBeDefined();
+                expect(utask.labels?.find(l => l.id === 2)).toBeFalsy();
                 expect(new Date(utask.dueDate!.toString())).toEqual(updateProp.dueDate!);
                 done();
             });
