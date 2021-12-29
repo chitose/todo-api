@@ -47,10 +47,11 @@ describe('ProjectRouter', () => {
         const projData: IProjectCreationAttributes = {
             name: 'Test project 1',
             archived: false,
-            view: ViewType.List
+            view: ViewType.List,
+            defaultInbox: true
         };
 
-        it(`should return a status code of ${StatusCodes.CREATED} if the request was successful.`, done => {
+        it(`should return a status code of ${StatusCodes.CREATED} if the project is created successful.`, done => {
             callCreateProjectApi(user1.auth!, projData)
                 .end((err: Error, res) => {
                     pErr(err);
@@ -60,6 +61,7 @@ describe('ProjectRouter', () => {
                     expect(proj.name).toBe(projData.name);
                     expect(proj.archived).toBe(projData.archived);
                     expect(proj.view).toBe(projData.view);
+                    expect(proj.defaultInbox).toBeFalse();
                     done();
                 });
         });
@@ -88,6 +90,15 @@ describe('ProjectRouter', () => {
                         done();
                     });
                 });
+            });
+        });
+
+        it('Each user must have a default Inbox project', done => {
+            callGetUserProjectApi(user1.auth!).end((err, res) => {
+                const projects = res.body as IProjectAttribute[];
+                const inbox = projects.find(p => p.defaultInbox);
+                expect(inbox).toBeDefined();
+                done();
             });
         });
     });
@@ -172,6 +183,16 @@ describe('ProjectRouter', () => {
                 const prj = res.body as IProjectAttribute;
                 callDeleteProjectApi(user2.auth!, prj.id).end((err1, res1) => {
                     expect(res1.status).toBe(StatusCodes.NO_CONTENT);
+                    done();
+                });
+            });
+        });
+
+        it(`should return ${StatusCodes.BAD_REQUEST} when trying to delete Inbox project`, done => {
+            callGetUserProjectApi(user1.auth!).end((err, res) => {
+                const inbox = (res.body as IProjectAttribute[]).find(p => p.defaultInbox);
+                callDeleteProjectApi(user1.auth!, inbox!.id).end((err1, res1) => {
+                    expect(res1.status).toBe(StatusCodes.BAD_REQUEST);
                     done();
                 });
             });

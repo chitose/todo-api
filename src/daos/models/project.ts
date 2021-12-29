@@ -16,6 +16,7 @@ export enum ViewType {
  * @property {string} name - The project name
  * @property {number} view - The view type (1 or 2)
  * @property {boolean} archived - The project archive status
+ * @property {boolean} defaultInbox - The default Inbox project
  * @property {string} createdAt - The created date
  * @property {string} modifiedAt - The modified date
  */
@@ -24,6 +25,7 @@ export interface IProjectAttribute {
     name: string;
     view: ViewType;
     archived: boolean;
+    defaultInbox: boolean;
 }
 
 /**
@@ -34,7 +36,7 @@ export interface IProjectAttribute {
  * @property {boolean} archived - The project archive status
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface IProjectCreationAttributes extends Optional<IProjectAttribute, 'id'> { }
+export interface IProjectCreationAttributes extends Optional<IProjectAttribute, 'id' | 'defaultInbox'> { }
 
 export class ProjectModel extends Model<IProjectAttribute, IProjectCreationAttributes>
     implements IProjectAttribute {
@@ -42,6 +44,7 @@ export class ProjectModel extends Model<IProjectAttribute, IProjectCreationAttri
     public name!: string;
     public view!: ViewType;
     public archived!: boolean;
+    public defaultInbox!: boolean;
 
     public readonly users?: UserModel[];
 }
@@ -60,6 +63,11 @@ ProjectModel.init(
             allowNull: false
         },
         archived: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false
+        },
+        defaultInbox: {
             type: DataTypes.BOOLEAN,
             allowNull: false,
             defaultValue: false

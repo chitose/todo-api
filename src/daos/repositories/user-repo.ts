@@ -1,6 +1,8 @@
-import { UserModel } from '@daos/models';
+import { UserModel, ViewType } from '@daos/models';
 import { Profile } from 'passport';
 import { Op } from 'sequelize';
+
+import { IProjectRepository } from './project-repo';
 
 export interface IUserRepository {
     /**
@@ -30,6 +32,8 @@ export interface IUserRepository {
 }
 
 class UserRepository implements IUserRepository {
+    constructor(private projectRepo: IProjectRepository) { }
+
     getAll(): Promise<UserModel[]> {
         return UserModel.findAll();
     }
@@ -41,7 +45,7 @@ class UserRepository implements IUserRepository {
                     displayName: {
                         [Op.substring]: text
                     },
-                    email:{
+                    email: {
                         [Op.substring]: text
                     }
                 }
@@ -58,13 +62,22 @@ class UserRepository implements IUserRepository {
             }
         })
     }
-    addUser(userProfile: Profile): Promise<UserModel> {
-        return UserModel.create({
+    async addUser(userProfile: Profile): Promise<UserModel> {
+        const user = await UserModel.create({
             id: userProfile.id,
             displayName: userProfile.displayName,
             photo: userProfile.photos ? userProfile.photos[0].value : null,
             email: userProfile.emails ? userProfile.emails[0].value : null
         });
+
+        // create a default inbox project
+        await this.projectRepo.createProject(user.id, {
+            name: 'Inbox',
+            view: ViewType.List,
+            archived: false,
+            defaultInbox: true
+        });
+        return user;
     }
 
     userExists(userId: string): Promise<boolean> {
@@ -72,4 +85,6 @@ class UserRepository implements IUserRepository {
     }
 }
 
-export default new UserRepository();
+export function createUserRepository(projectRepo: IProjectRepository) {
+    return new UserRepository(projectRepo);
+};

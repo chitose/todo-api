@@ -25,6 +25,10 @@ class ProjectRepository implements IProjectRepository {
             throw new Error('Project not found');
         }
 
+        if (proj.defaultInbox) {
+            throw new Error('Default Inbox cannot be delete');
+        }
+
         await ProjectModel.destroy({
             where: {
                 id: projId

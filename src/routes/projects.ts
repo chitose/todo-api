@@ -51,7 +51,8 @@ const repo = getProjectRepository();
  */
 async function createProject(req: Request, res: Response) {
     const user = req.user as IUserAttribute;
-    const proj = req.body as unknown as IProjectCreationAttributes;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { defaultInbox, ...proj } = req.body as IProjectCreationAttributes;
     if (!proj.name) {
         return res.status(StatusCodes.PRECONDITION_REQUIRED)
             .send({ message: 'name is required.' });
