@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import { ICommentCreationAttributes, IProjectAttribute, IProjectCreationAttributes, ViewType } from '@daos/models';
-import app from '@server';
+import { IProjectAttribute, IProjectCommentCreationAttributes, IProjectCreationAttributes, ViewType } from '@daos/models';
+import createServer from '@server';
 import { pErr } from '@shared/functions';
 import StatusCodes from 'http-status-codes';
 import { user1, user2, user3 } from 'spec';
@@ -12,7 +12,7 @@ describe('ProjectRouter', () => {
     let agent: SuperTest<Test>;
 
     beforeAll((done) => {
-        agent = supertest.agent(app);
+        agent = supertest.agent(createServer(''));
         done();
     });
 
@@ -195,7 +195,7 @@ describe('ProjectRouter', () => {
     const callAddProjectCommentApi = (auth: string, projectId: number, comment: string) => {
         return agent.put(projectRouteBuilder.addProjectComment(projectId))
             .set('Authorization', auth)
-            .type('json').send({ comments: comment } as Partial<ICommentCreationAttributes>);
+            .type('json').send({ comments: comment } as Partial<IProjectCommentCreationAttributes>);
     }
 
     describe(`"PUT:${projectRouteBuilder.addProjectComment()}"`, () => {
@@ -212,7 +212,10 @@ describe('ProjectRouter', () => {
         });
 
         it(`it should return ${StatusCodes.CREATED} when comment is added succesfully.`, done => {
-
+            callAddProjectCommentApi(user1.auth!, project.id, 'Test comment').end((err, res) => {
+                expect(res.status).toBe(StatusCodes.CREATED);
+                done();
+            });
         });
     });
 });

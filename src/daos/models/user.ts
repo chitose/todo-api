@@ -3,6 +3,15 @@ import { DataTypes, Model } from 'sequelize';
 
 import db from '../sqlite3/sqlite-dao';
 
+/**
+ * User info
+ * @typedef {object} User
+ *
+ * @property {string} id - The user id
+ * @property {string} displayName - The user display name
+ * @property {string} email - The email
+ * @property {string} photo - The photo url
+ */
 export interface IUserAttribute {
     id: string;
     displayName: string;

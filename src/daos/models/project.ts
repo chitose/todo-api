@@ -15,9 +15,9 @@ export enum ViewType {
  * @property {number} id - The project id
  * @property {string} name - The project name
  * @property {number} view - The view type (1 or 2)
- * @property {boolean} archived: The project archive status
- * @property {date} createdAt: The created date
- * @property {date} modifiedAt: The modified date
+ * @property {boolean} archived - The project archive status
+ * @property {string} createdAt - The created date
+ * @property {string} modifiedAt - The modified date
  */
 export interface IProjectAttribute {
     id: number;
@@ -31,7 +31,7 @@ export interface IProjectAttribute {
  * @typedef {object} ProjectCreation
  * @property {string} name.required - The project name
  * @property {number} view - The view type (1 or 2)
- * @property {boolean} archived: The project archive status
+ * @property {boolean} archived - The project archive status
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface IProjectCreationAttributes extends Optional<IProjectAttribute, 'id'> { }

@@ -49,7 +49,9 @@ export default function createServer(swaggerTestUserToken: string): express.Expr
     app.use(cookieParser());
     app.use(compression());
 
-    setupSwagger(app, swaggerTestUserToken);
+    if (swaggerTestUserToken) {
+        setupSwagger(app, swaggerTestUserToken);
+    }
 
     configureAuthentication(app, APP_SECRET);
 

@@ -45,7 +45,7 @@ const repo = getProjectRepository();
  * PUT /api/projects
  * @summary Create a new project.
  * @param {ProjectCreation} request.body.required - project info
- * @return {} 201 - success response
+ * @return {Project} 201 - success response
  * @return {ErrorResponse} 428 - Validation error response
  * @security jwt
  */
@@ -109,7 +109,7 @@ export interface IShareProjectRequestBody {
  * @summary Share project with other users
  * @param {number} id.path.required - The project id
  * @param {ShareProjectRequest} request.body.required - request info
- * @return {string} 200 - success response
+ * @return 200 - success response
  * @return {ErrorResponse} 400 - Bad request response
  * @security jwt
  */
@@ -132,7 +132,7 @@ async function shareProject(req: Request, res: Response) {
  * DELETE /api/projects/{id}
  * @summary Delete a project
  * @param {number} id.path.required - The project id
- * @return {string} 204 - success response
+ * @return 204 - success response
  * @return {ErrorResponse} 400 - Bad request response
  * @security jwt
  */

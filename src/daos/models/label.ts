@@ -1,17 +1,29 @@
 import db from '@daos/sqlite3/sqlite-dao';
-import { DataTypes, Model, Optional } from 'sequelize';
+import { DataTypes, Model } from 'sequelize';
 
 import { UserModel } from '.';
 import { autoIncrementIdColumn } from './columns';
 
+/**
+ * Label
+ * @typedef {object} Label
+ * @property {number} id - The label's id
+ * @property {string} title - The title
+ */
 export interface ILabelAttribute {
     id: number;
     title: string;
     userId: string;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface ILabelCreationAttribute extends Optional<ILabelAttribute, 'id'> { }
+
+/**
+ * Label creation info
+ *
+ * @typedef {object} LabelCreation
+ * @property {string} title - The title
+ */
+export interface ILabelCreationAttribute extends Omit<ILabelAttribute, 'id'> { }
 
 export class LabelModel extends Model<ILabelAttribute, ILabelCreationAttribute> implements ILabelAttribute {
     public id!: number;

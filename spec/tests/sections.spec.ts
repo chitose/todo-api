@@ -7,7 +7,7 @@ import {
     ViewType,
 } from '@daos/models';
 import { ISectionAttribute, ISectionCreationAttribute, SectionModel } from '@daos/models/section';
-import app from '@server';
+import createServer from '@server';
 import { pErr } from '@shared/functions';
 import StatusCodes from 'http-status-codes';
 import { user1, user2 } from 'spec';
@@ -19,7 +19,7 @@ describe('ProjectRouter - Sections', () => {
     let agent: SuperTest<Test>;
 
     beforeAll((done) => {
-        agent = supertest.agent(app);
+        agent = supertest.agent(createServer(''));
         done();
     });
 

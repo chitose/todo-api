@@ -13,6 +13,22 @@ export enum TaskPriority {
     Priority4
 }
 
+/**
+ * Task creation info
+ *
+ * @typedef {object} TaskCreation
+ * @property {string} title - The title
+ * @property {description} - The task description
+ * @property {string} dueDate - The task due date
+ * @property {number} priority - The task priority (0-3)
+ * @property {number} projectId - The project id
+ * @property {string} assignTo - The user id
+ * @property {number} sectionId - The section id
+ * @property {boolean} completed - The task completion status
+ * @property {number} taskOrder - The order of the task
+ * @property {array<Label>} labels - The labels of the task
+ * @property {number} parentTaskId - The id of parent task
+ */
 export interface ITaskCreationAttributes {
     title: string;
     description: string;
@@ -27,6 +43,24 @@ export interface ITaskCreationAttributes {
     parentTaskId?: number;
     subTasks?: ITaskAttribute[];
 }
+
+/**
+ * Task attribute
+ *
+ * @typedef {object} Task
+ * @property {number} id - The task id
+ * @property {string} title - The title
+ * @property {description} - The task description
+ * @property {string} dueDate - The task due date
+ * @property {number} priority - The task priority (0-3)
+ * @property {number} projectId - The project id
+ * @property {string} assignTo - The user id
+ * @property {number} sectionId - The section id
+ * @property {boolean} completed - The task completion status
+ * @property {number} taskOrder - The order of the task
+ * @property {array<Label>} labels - The labels of the task
+ * @property {array<object>} subTasks - The sub tasks.
+ */
 export interface ITaskAttribute extends ITaskCreationAttributes {
     id: number;
     taskOrder: number;

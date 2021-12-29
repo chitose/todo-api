@@ -1,9 +1,18 @@
 import db from '@daos/sqlite3/sqlite-dao';
-import { Association, DataTypes, Model, Optional } from 'sequelize';
+import { Association, DataTypes, Model } from 'sequelize';
 
 import { ProjectModel, TaskModel } from '.';
 import { autoIncrementIdColumn } from './columns';
 
+/**
+ * Section
+ * @typedef {object} Section
+ * @property {number} id - The section id
+ * @property {string} name - The section name
+ * @property {number} order - The section order
+ * @property {number} projectId - The parent project's id
+ * @property {array<Task>} tasks - The section's tasks
+ */
 export interface ISectionAttribute {
     id: number;
     name: string;
@@ -11,7 +20,14 @@ export interface ISectionAttribute {
     order: number;
 }
 
-export interface ISectionCreationAttribute extends Optional<ISectionAttribute, 'id'> { }
+/**
+ * Section creation info
+ * @typedef {object} SectionCreation
+ * @property {string} name - The section name
+ * @property {number} order - The section order
+ * @property {number} projectId - The parent project's id
+ */
+export interface ISectionCreationAttribute extends Omit<ISectionAttribute, 'id'> { }
 
 export class SectionModel extends Model<ISectionAttribute, ISectionCreationAttribute> implements ISectionAttribute {
     public id!: number;

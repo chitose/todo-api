@@ -1,11 +1,21 @@
 import db from '@daos/sqlite3/sqlite-dao';
-import { DataTypes, Model, Optional } from 'sequelize';
+import { DataTypes, Model } from 'sequelize';
 
 import { ProjectModel } from '.';
 import { autoIncrementIdColumn } from './columns';
 import { TaskModel } from './task';
 import { UserModel } from './user';
 
+/**
+ * Comment
+ * @typedef {object} Comment
+ *
+ * @property {number} id - Comment's id
+ * @property {string} comments - Comment text.
+ * @property {string} commentDate - The date where comment is added
+ * @property {number} projectId - The id of project (comment of project)
+ * @property {number} taskId - The task id (comment of task)
+ */
 export interface ICommentAttribute {
     id: number;
     comments: string;
@@ -15,8 +25,33 @@ export interface ICommentAttribute {
     taskId?: number;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface ICommentCreationAttributes extends Optional<ICommentAttribute, 'id'> { }
+
+/**
+ * Comment creation
+ * @typedef {object} CommentCreation
+ * @property {string} comments - Comment text.
+ * @property {number} projectId - The id of project (comment of project)
+ * @property {number} taskId - The task id (comment of task)
+ * */
+interface ICommentCreationAttributes extends Omit<ICommentAttribute, 'id'> { }
+
+/**
+ * Project comment creation info
+ * @typedef {object} ProjectCommentCreation
+ * @property {string} comments - Comment text.
+ * @property {number} projectId - The id of project (comment of project)
+ */
+export interface IProjectCommentCreationAttributes extends Omit<ICommentAttribute, 'taskId' | 'id' | 'commentDate'> {
+}
+
+/**
+ * Task comment creation info
+ * @typedef {object} TaskCommentCreation
+ * @property {string} comments - Comment text.
+ * @property {number} taskId - The id of task
+ */
+export interface ITaskCommentCreationAttribute extends Omit<ICommentAttribute, 'projectId' | 'id' | 'commentDate'> {
+}
 
 export const COMMENTS_TABLE = 'comments';
 

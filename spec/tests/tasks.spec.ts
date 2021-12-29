@@ -3,12 +3,13 @@ import {
     IProjectAttribute,
     IProjectCreationAttributes,
     ITaskAttribute,
+    ITaskCommentCreationAttribute,
     ITaskCreationAttributes,
     TaskPriority,
     ViewType,
 } from '@daos/models';
 import { ISectionAttribute, ISectionCreationAttribute } from '@daos/models/section';
-import app from '@server';
+import createServer from '@server';
 import { pErr } from '@shared/functions';
 import StatusCodes from 'http-status-codes';
 import { user1, user2 } from 'spec';
@@ -20,7 +21,7 @@ describe('ProjectRouter - Tasks', () => {
     let agent: SuperTest<Test>;
 
     beforeAll((done) => {
-        agent = supertest.agent(app);
+        agent = supertest.agent(createServer(''));
         done();
     });
 
@@ -348,5 +349,42 @@ describe('ProjectRouter - Tasks', () => {
             });
         });
 
+    });
+
+    const callAddTaskCommentApi = (auth: string, projectId: number, taskId: number, comment: string) => {
+        return agent.put(projectRouteBuilder.addTaskComment(projectId, taskId))
+            .set('Authorization', auth)
+            .type('json').send({ comments: comment } as Partial<ITaskCommentCreationAttribute>);
+    }
+
+    describe(`"PUT:${projectRouteBuilder.addProjectComment()}"`, () => {
+        let project: IProjectAttribute;
+        let task: ITaskAttribute;
+        beforeEach(done => {
+            callCreateProjectApi(user1.auth!, {
+                name: 'Test project',
+                archived: false,
+                view: ViewType.List
+            }).end((err, res) => {
+                project = res.body as IProjectAttribute;
+                callAddProjectTaskApi(user1.auth!, project.id, {
+                    title: 'Test task',
+                    description: 'Test desc',
+                    projectId: project.id,
+                    labels: [{ id: 1 }, { id: 2 }],
+                    completed: false
+                }).end((err1, res1) => {
+                    task = res1.body as ITaskAttribute;
+                    done();
+                });
+            });
+        });
+
+        it(`it should return ${StatusCodes.CREATED} when comment is added succesfully.`, done => {
+            callAddTaskCommentApi(user1.auth!, project.id, task.id, 'Test comment').end((err, res) => {
+                expect(res.status).toBe(StatusCodes.CREATED);
+                done();
+            });
+        });
     });
 });
