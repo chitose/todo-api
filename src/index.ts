@@ -13,14 +13,8 @@ db.sync({ force: false }).then(() => {
     logger.info('Database is synchronized.');
     // Start the server
     const port = Number(process.env.PORT || 3000);
-    const swaggerPort = port + 1;
     const userRepo = getUserRepository();
     const APP_SECRET = process.env.APP_SECRET as string;
-
-    const mainApp = createServer('');
-    mainApp.listen(port, () => {
-        logger.info('Express server started: http://localhost:' + port);
-    });
 
     const userId = 'swaggerTestUser';
     const startSwaggerApp = (user: IUserAttribute) => {
@@ -28,8 +22,9 @@ db.sync({ force: false }).then(() => {
             id: user.id
         }, APP_SECRET);
         const app = createServer(token);
-        app.listen(swaggerPort, () => {
-            logger.info(`Swagger UI: http://localhost:${swaggerPort}/api-docs`);
+        app.listen(port, () => {
+            logger.info('Express server started: http://localhost:' + port);
+            logger.info(`Swagger UI: http://localhost:${port}/api-docs`);
         });
     };
     userRepo.getUser(userId).then(user => {

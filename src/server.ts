@@ -3,6 +3,7 @@ import 'express-async-errors';
 import logger from '@shared/logger';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
+import cors from 'cors';
 import express, { NextFunction, Request, Response } from 'express';
 import session from 'express-session';
 import helmet from 'helmet';
@@ -12,7 +13,6 @@ import morgan from 'morgan';
 import { configureAuthentication } from './config/authentication';
 import setupSwagger from './docs/swagger';
 import BaseRouter from './routes';
-
 
 export default function createServer(swaggerTestUserToken: string): express.Express {
     const app = express();
@@ -64,6 +64,9 @@ export default function createServer(swaggerTestUserToken: string): express.Expr
     if (process.env.NODE_ENV === 'production') {
         app.use(helmet());
     }
+
+    // enable pre-flight across-the-board
+    app.options('*', cors() as any) // include before other routes
 
     // Add APIs
     app.use('/api', BaseRouter);
