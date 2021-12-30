@@ -71,10 +71,11 @@ async function createProject(req: Request, res: Response) {
 }
 
 /**
- * GET /api/projects
- * @summary Get all projects of current user
- * @return {array<Project>} 200 - success response
- * @security jwt
+ * GET /api/projects/{id}
+ * @summary Get project by id
+ * @param {number} id.path.required - The project id
+ * @return {Project} 200 - success response
+ * @security jwt 
  */
 async function getProject(req: Request, res: Response) {
     const { projectId } = new RouteParams(req);
@@ -84,15 +85,26 @@ async function getProject(req: Request, res: Response) {
 }
 
 /**
- * GET /api/projects/{id}
- * @summary Get project by id
- * @param {number} id.path.required - The project id
- * @return {Project} 200 - success response
- * @security jwt 
+ * GET /api/projects
+ * @summary Get non-archived projects
+ * @return {array<Project>} 200 - success response
+ * @security jwt
  */
-async function getUserProjects(req: Request, res: Response) {
+async function getProjects(req: Request, res: Response) {
     const user = req.user as IUserAttribute;
-    const projects = await repo.getUserProjects(user.id);
+    const projects = await repo.getProjects(user.id);
+    return res.status(StatusCodes.OK).json(projects);
+}
+
+/**
+ * GET /api/projects/archived
+ * @summary Get archived projects
+ * @return {array<Project>} 200 - success response
+ * @security jwt
+ */
+async function getArchivedProjects(req: Request, res: Response) {
+    const user = req.user as IUserAttribute;
+    const projects = await repo.getArchivedProjects(user.id);
     return res.status(StatusCodes.OK).json(projects);
 }
 
@@ -150,6 +162,48 @@ async function deleteProject(req: Request, res: Response) {
     }
 }
 
+/**
+ * POST /api/projects/{id}
+ * @summary Update a project
+ * @param {number} id.path.required - The project id
+ * @return {Project} 200 - success response
+ * @return {ErrorResponse} 400 - bad request reponse
+ * @security jwt
+ */
+async function updateProject(req: Request, res: Response) {
+    const user = req.user as IUserAttribute;
+    const { projectId } = new RouteParams(req);
+    try {
+        const proj = await repo.updateProject(user.id, projectId, req.body as IProjectCreationAttributes);
+        return res.status(StatusCodes.OK).send(proj);
+    } catch (e: any) {
+        return res.status(StatusCodes.BAD_REQUEST).send({
+            message: e.message
+        });
+    }
+}
+
+/**
+ * POST /api/projects/{projectId}/swap/{targetProjectId}
+ * @summary Swap project's order
+ * @param {number} projectId.path.required - The source project id
+ * @param {number} targetProjectId.path.required - The target project id
+ * @return {array<Project>} 200 - success response
+ * @return {ErrorResponse} 400 - Bad request response
+ */
+async function swapProjectOrder(req: Request, res: Response) {
+    const user = req.user as IUserAttribute;
+    const { projectId, targetProjectId } = new RouteParams(req);
+    try {
+        const projs = await repo.swapProjectOrder(user.id, projectId, targetProjectId);
+        return res.status(StatusCodes.OK).send(projs);
+    } catch (e: any) {
+        return res.status(StatusCodes.BAD_REQUEST).send({
+            message: e.message
+        });
+    }
+}
+
 
 export class ProjectRouteUrlBuilder {
     public base = '/projects';
@@ -161,8 +215,12 @@ export class ProjectRouteUrlBuilder {
         return this.getUrl('');
     }
 
-    public getUserProjects() {
+    public getProjects() {
         return this.getUrl('');
+    }
+
+    public getArchivedProjects() {
+        return this.getUrl('/archived');
     }
 
     public getProjectById(id?: string | number) {
@@ -171,6 +229,14 @@ export class ProjectRouteUrlBuilder {
 
     public shareProject(id?: string | number) {
         return `${this.getProjectById(id)}/share`;
+    }
+
+    public updateProject(id?: string | number) {
+        return this.getProjectById(id);
+    }
+
+    public swapProjectOrder(id?: string | number, targetProjectId?: string | number) {
+        return `${this.getProjectById(id)}/swap/${targetProjectId ? targetProjectId : ':' + getKey<RouteParams>('targetProjectId')}`;
     }
 
     public deleteProject(id?: string | number) {
@@ -289,12 +355,15 @@ const projectRoutes = new ProjectRouteUrlBuilder();
 const projectRouter = Router();
 
 projectRouter.put(projectRoutes.create(), createProject);
-projectRouter.get(projectRoutes.getUserProjects(), getUserProjects);
+projectRouter.get(projectRoutes.getProjects(), getProjects);
+projectRouter.post(projectRoutes.updateProject(), updateProject);
+projectRouter.get(projectRoutes.getArchivedProjects(), getArchivedProjects);
 projectRouter.get(projectRoutes.getProjectById(), getProject);
 projectRouter.post(projectRoutes.shareProject(), shareProject);
 projectRouter.delete(projectRoutes.deleteProject(), deleteProject);
 projectRouter.put(projectRoutes.addProjectComment(), addProjectComment);
 projectRouter.get(projectRoutes.getProjectComments(), getProjectComments);
+projectRouter.post(projectRoutes.swapProjectOrder(), swapProjectOrder);
 
 // section
 projectRouter.get(projectRoutes.getSection(), getSection);

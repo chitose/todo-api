@@ -1,13 +1,16 @@
 import {
     CommentModel,
     IProjectCreationAttributes,
+    IUserAttribute,
+    IUserProjectsAttribute,
     ProjectCommentAssociation,
     ProjectModel,
     ProjectUserAssociation,
     UserModel,
     UserProjectsModel,
 } from '@daos/models';
-import { Op } from 'sequelize/dist';
+import { getKey } from '@shared/utils';
+import { Op } from 'sequelize';
 
 export interface IProjectRepository {
     search(userId: string, text: string): Promise<ProjectModel[]>;
@@ -18,12 +21,38 @@ export interface IProjectRepository {
 
     get(userId: string, projId: number): Promise<ProjectModel | null>;
 
-    getUserProjects(userId: string): Promise<ProjectModel[]>;
+    getProjects(userId: string): Promise<ProjectModel[]>;
+
+    getArchivedProjects(userId: string): Promise<ProjectModel[]>;
 
     deleteProject(userId: string, projId: number): Promise<void>;
+
+    updateProject(userId: string, projectId: number, prop: Partial<IProjectCreationAttributes>): Promise<ProjectModel>;
+
+    swapProjectOrder(userId: string, sourceProject: number, targetProject: number): Promise<ProjectModel[]>;
 }
 
 class ProjectRepository implements IProjectRepository {
+    async swapProjectOrder(userId: string, sourceProject: number, targetProject: number): Promise<ProjectModel[]> {
+        const projects = await UserProjectsModel.findAll({
+            where: {
+                projectId: { [Op.in]: [sourceProject, targetProject] },
+                userId: userId
+            }
+        });
+        if (projects.length === 2) {
+            const oldOrder = projects[0].order;
+            await UserProjectsModel.update({ order: projects[1].order }, { where: { userId: userId, projectId: projects[0].projectId } });
+            await UserProjectsModel.update({ order: oldOrder }, { where: { userId: userId, projectId: projects[1].projectId } });
+        }
+        return ProjectModel.findAll({
+            where: {
+                id: { [Op.in]: [sourceProject, targetProject] },
+            },
+            include: this.getCommonProjectInclude(userId)
+        });
+    }
+
     async search(userId: string, text: string): Promise<ProjectModel[]> {
         return ProjectModel.findAll({
             where: {
@@ -41,6 +70,28 @@ class ProjectRepository implements IProjectRepository {
                 }
             }
         });
+    }
+
+    async updateProject(userId: string, projectId: number, prop: Partial<IProjectCreationAttributes>): Promise<ProjectModel> {
+        const { archived, name } = prop;
+        const proj = await this.get(userId, projectId);
+        if (!proj) {
+            throw new Error('Project not found');
+        }
+
+        const updateProp: Partial<IProjectCreationAttributes> = {
+        };
+
+        if (archived !== undefined) {
+            updateProp.archived = archived;
+        }
+
+        if (name !== undefined) {
+            updateProp.name = name;
+        }
+
+        await ProjectModel.update(updateProp, { where: { id: projectId } });
+        return this.get(userId, projectId) as unknown as ProjectModel;
     }
 
     async deleteProject(userId: string, projId: number): Promise<void> {
@@ -82,19 +133,36 @@ class ProjectRepository implements IProjectRepository {
         });
     }
 
-    async getUserProjects(userId: string): Promise<ProjectModel[]> {
-        return ProjectModel.findAll({
-            include: {
-                model: UserModel,
-                where: {
-                    id: userId
-                },
-                as: ProjectUserAssociation.as,
-                attributes: [],
-                through: {
-                    attributes: []
-                }
+    private getCommonProjectInclude(userId: string) {
+        return {
+            model: UserModel,
+            where: {
+                id: userId
+            },
+            as: ProjectUserAssociation.as,
+            attributes: [getKey<IUserAttribute>('id')],
+            through: {
+                as: 'props',
+                attributes: [getKey<IUserProjectsAttribute>('owner'), getKey<IUserProjectsAttribute>('order')]
             }
+        };
+    }
+
+    async getProjects(userId: string): Promise<ProjectModel[]> {
+        return ProjectModel.findAll({
+            where: {
+                archived: false
+            },
+            include: this.getCommonProjectInclude(userId)
+        });
+    }
+
+    async getArchivedProjects(userId: string): Promise<ProjectModel[]> {
+        return ProjectModel.findAll({
+            where: {
+                archived: true
+            },
+            include: this.getCommonProjectInclude(userId)
         });
     }
 
@@ -103,12 +171,18 @@ class ProjectRepository implements IProjectRepository {
         try {
             const rProj = await ProjectModel.create(proj);
 
+            const order = await UserProjectsModel.max<number, UserProjectsModel>('order', {
+                where: {
+                    userId: userId
+                }
+            });
+
             await UserProjectsModel.create(
                 {
-                    userId: userId, projectId: rProj.id, owner: true
+                    userId: userId, projectId: rProj.id, owner: true, order: (order || 0) + 1
                 });
             await t?.commit();
-            return rProj;
+            return this.get(userId, rProj.id);
         } catch (e) {
             await t?.rollback();
             throw e;
@@ -122,12 +196,16 @@ class ProjectRepository implements IProjectRepository {
             throw new Error('Only project collaborators can share.');
         }
 
-        await UserProjectsModel.bulkCreate(
-            sharedWithUsers.map(id => ({
-                userId: id,
-                projectId: projId
-            }))
-        );
+        for (const user of sharedWithUsers) {
+            const order = await UserProjectsModel.max<number, UserProjectsModel>('order', { where: { userId: user } });
+            await UserProjectsModel.create(
+                {
+                    userId: user,
+                    projectId: projId,
+                    owner: false,
+                    order: (order || 0) + 1
+                });
+        }
     }
 
     async get(userId: string, projId: number): Promise<ProjectModel | null> {
@@ -139,16 +217,7 @@ class ProjectRepository implements IProjectRepository {
                 model: CommentModel,
                 as: ProjectCommentAssociation.as
             },
-            {
-                model: UserModel,
-                required: true,
-                where: {
-                    id: userId
-                },
-                as: ProjectUserAssociation.as,
-                attributes: [],
-                through: { attributes: [] }
-            }]
+            this.getCommonProjectInclude(userId)]
         });
     }
 }

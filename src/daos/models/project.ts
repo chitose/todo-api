@@ -1,9 +1,8 @@
 import db from '@daos/sqlite3/sqlite-dao';
 import { DataTypes, Model, Optional } from 'sequelize';
 
-import { CommentModel } from '.';
+import { CommentModel, IUserProjectInfo } from '.';
 import { autoIncrementIdColumn } from './columns';
-import { UserModel } from './user';
 
 export enum ViewType {
     List = 1,
@@ -20,6 +19,7 @@ export enum ViewType {
  * @property {boolean} defaultInbox - The default Inbox project
  * @property {string} createdAt - The created date
  * @property {string} modifiedAt - The modified date
+ * @property {array<UserProject>} users - The project extra info
  */
 export interface IProjectAttribute {
     id: number;
@@ -27,6 +27,7 @@ export interface IProjectAttribute {
     view: ViewType;
     archived: boolean;
     defaultInbox: boolean;
+    users?: IUserProjectInfo[];
 }
 
 /**
@@ -45,9 +46,10 @@ export class ProjectModel extends Model<IProjectAttribute, IProjectCreationAttri
     public name!: string;
     public view!: ViewType;
     public archived!: boolean;
+
     public defaultInbox!: boolean;
 
-    public readonly users?: UserModel[];
+    public readonly users?: IUserProjectInfo[];
     public readonly comments?: CommentModel[];
 }
 

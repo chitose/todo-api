@@ -4,15 +4,39 @@ import { DataTypes, Model } from 'sequelize';
 import { ProjectModel } from '../project';
 import { UserModel } from '../user';
 
+
+export interface IUserProjectInfo {
+    id: string;
+    props: {
+        owner: boolean;
+        order: number;
+    }
+}
+
+/**
+ * User 
+ * @typedef {object} UserProject
+ * @property {string} id - The user id
+ * @property {UserProjectProp} props - The extra prop
+ */
+
+/**
+ * User project prop
+ * @typedef {object} UserProjectProp
+ * @property {boolean} owner - True if user is the owner of the project
+ * @property {number} order - The order of the project
+ */
 export interface IUserProjectsAttribute {
     userId: string;
     projectId: number;
     owner?: boolean;
+    order: number;
 }
 export class UserProjectsModel extends Model<IUserProjectsAttribute, IUserProjectsAttribute> implements IUserProjectsAttribute {
     public userId!: string;
     public projectId!: number;
     public owner?: boolean;
+    public order!: number;
 }
 
 export const USER_PROJECTS_TABLE = 'user_projects';
@@ -37,6 +61,10 @@ UserProjectsModel.init(
             type: DataTypes.BOOLEAN,
             allowNull: false,
             defaultValue: false
+        },
+        order: {
+            type: DataTypes.INTEGER,
+            allowNull: false
         }
     },
     {

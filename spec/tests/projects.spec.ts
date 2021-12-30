@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { IProjectAttribute, IProjectCommentCreationAttributes, IProjectCreationAttributes, ViewType } from '@daos/models';
 import createServer from '@server';
 import { pErr } from '@shared/functions';
@@ -7,6 +6,7 @@ import { user1, user2, user3 } from 'spec';
 import { ProjectRouteUrlBuilder } from 'src/routes/projects';
 import supertest, { SuperTest, Test } from 'supertest';
 
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 const projectRouteBuilder = new ProjectRouteUrlBuilder(false);
 describe('ProjectRouter', () => {
     let agent: SuperTest<Test>;
@@ -23,7 +23,7 @@ describe('ProjectRouter', () => {
     }
 
     const callGetUserProjectApi = (auth: string) => {
-        return agent.get(projectRouteBuilder.getUserProjects())
+        return agent.get(projectRouteBuilder.getProjects())
             .set('Authorization', auth);
     }
 
@@ -40,6 +40,17 @@ describe('ProjectRouter', () => {
 
     const callDeleteProjectApi = (auth: string, id: number) => {
         return agent.delete(projectRouteBuilder.deleteProject(id))
+            .set('Authorization', auth);
+    }
+
+    const callUpdateProjectApi = (auth: string, id: number, prop: Partial<IProjectCreationAttributes>) => {
+        return agent.post(projectRouteBuilder.deleteProject(id))
+            .set('Authorization', auth)
+            .type('json').send(prop);
+    }
+
+    const callSwapProjectOrderApi = (auth: string, id: number, target: number) => {
+        return agent.post(projectRouteBuilder.swapProjectOrder(id, target))
             .set('Authorization', auth);
     }
 
@@ -67,7 +78,7 @@ describe('ProjectRouter', () => {
         });
     });
 
-    describe(`"GET:${projectRouteBuilder.getUserProjects()}"`, () => {
+    describe(`"GET:${projectRouteBuilder.getProjects()}"`, () => {
         it('return projects where user is a collaborator', (done) => {
             // prepare some data
             callCreateProjectApi(user2.auth!, {
@@ -240,5 +251,72 @@ describe('ProjectRouter', () => {
                 done();
             });
         });
+    });
+
+    describe(`"POST:${projectRouteBuilder.updateProject()}"`, () => {
+        let project: IProjectAttribute;
+        beforeEach(done => {
+            callCreateProjectApi(user1.auth!, {
+                name: 'Test project',
+                archived: false,
+                view: ViewType.List
+            }).end((err, res) => {
+                project = res.body as IProjectAttribute;
+                done();
+            });
+        });
+
+        it(`it should return ${StatusCodes.OK} when project is updated succesfully.`, done => {
+            callUpdateProjectApi(user1.auth!, project.id, { name: 'New test project', archived: true }).end((e, r) => {
+                const up = r.body as IProjectAttribute;
+                expect(r.status).toBe(StatusCodes.OK);
+                expect(up.name).toBe('New test project');
+                expect(up.archived).toBeTrue();
+                done();
+            });
+        });
+
+        it(`it should return ${StatusCodes.BAD_REQUEST} when project is updated by non-project collaborator.`, done => {
+            callUpdateProjectApi(user2.auth!, project.id, { name: 'New test project', archived: true }).end((e, r) => {
+                expect(r.status).toBe(StatusCodes.BAD_REQUEST);
+                done();
+            });
+        });
+    });
+
+    describe(`"POST:${projectRouteBuilder.swapProjectOrder()}"`, () => {
+        let project: IProjectAttribute;
+        let project1: IProjectAttribute;
+
+        beforeEach(done => {
+            callCreateProjectApi(user1.auth!, {
+                name: 'Test project',
+                archived: false,
+                view: ViewType.List
+            }).end((err, res) => {
+                project = res.body as IProjectAttribute;
+                callCreateProjectApi(user1.auth!, {
+                    name: 'Test project',
+                    archived: false,
+                    view: ViewType.List
+                }).end((e1, r1) => {
+                    project1 = r1.body as IProjectAttribute;
+                    done();
+                });
+            });
+        });
+
+        it(`it should return ${StatusCodes.OK} when projects order is swapped succesfully.`, done => {
+            callSwapProjectOrderApi(user1.auth!, project.id, project1.id).end((e, r) => {
+                const projs = r.body as IProjectAttribute[];
+                const up = projs.find(p => p.id === project.id);
+                const up1 = projs.find(p => p.id === project1.id);
+                expect(up?.users![0].props.order).toBe(project1.users![0].props.order);
+                expect(up1?.users![0].props.order).toBe(project.users![0].props.order);
+                done();
+            });
+        });
+
+
     });
 });
