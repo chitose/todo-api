@@ -7,10 +7,12 @@ import { UserModel } from '../user';
 export interface IUserProjectsAttribute {
     userId: string;
     projectId: number;
+    owner?: boolean;
 }
 export class UserProjectsModel extends Model<IUserProjectsAttribute, IUserProjectsAttribute> implements IUserProjectsAttribute {
     public userId!: string;
     public projectId!: number;
+    public owner?: boolean;
 }
 
 export const USER_PROJECTS_TABLE = 'user_projects';
@@ -30,6 +32,11 @@ UserProjectsModel.init(
                 model: ProjectModel,
                 key: 'id'
             }
+        },
+        owner: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false
         }
     },
     {

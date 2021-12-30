@@ -44,7 +44,29 @@ class ProjectRepository implements IProjectRepository {
     }
 
     async deleteProject(userId: string, projId: number): Promise<void> {
-        const proj = await this.get(userId, projId);
+        const proj = await ProjectModel.findOne({
+            where: {
+                id: projId
+            },
+            include: [{
+                model: CommentModel,
+                as: ProjectCommentAssociation.as
+            },
+            {
+                model: UserModel,
+                required: true,
+                as: ProjectUserAssociation.as,
+                attributes: [],
+                through: {
+                    attributes: [],
+                    where: {
+                        userId: userId,
+                        owner: true
+                    }
+                }
+            }]
+        }) as ProjectModel;
+
         if (!proj) {
             throw new Error('Project not found');
         }
@@ -83,7 +105,7 @@ class ProjectRepository implements IProjectRepository {
 
             await UserProjectsModel.create(
                 {
-                    userId: userId, projectId: rProj.id
+                    userId: userId, projectId: rProj.id, owner: true
                 });
             await t?.commit();
             return rProj;

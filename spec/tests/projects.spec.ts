@@ -198,16 +198,18 @@ describe('ProjectRouter', () => {
             });
         });
 
-        it(`should return ${StatusCodes.BAD_REQUEST} when it is deleted by user that is not a collaborator`, (done) => {
+        it(`should return ${StatusCodes.BAD_REQUEST} when it is deleted by user that is not the owner`, (done) => {
             callCreateProjectApi(user2.auth!, {
                 name: 'User 2 test project',
                 view: ViewType.List,
                 archived: false
             }).end((err, res) => {
                 const prj = res.body as IProjectAttribute;
-                callDeleteProjectApi(user1.auth!, prj.id).end((err1, res1) => {
-                    expect(res1.status).toBe(StatusCodes.BAD_REQUEST);
-                    done();
+                callShareProjectApi(user2.auth!, prj.id, { users: [user1.id] }).end(() => {
+                    callDeleteProjectApi(user1.auth!, prj.id).end((err1, res1) => {
+                        expect(res1.status).toBe(StatusCodes.BAD_REQUEST);
+                        done();
+                    });
                 });
             });
         });
