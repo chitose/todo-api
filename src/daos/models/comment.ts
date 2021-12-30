@@ -21,7 +21,7 @@ export interface ICommentAttribute {
     comments: string;
     userId: string;
     commentDate: Date;
-    projectId: number;
+    projectId?: number;
     taskId?: number;
 }
 
@@ -38,19 +38,17 @@ interface ICommentCreationAttributes extends Omit<ICommentAttribute, 'id'> { }
 /**
  * Project comment creation info
  * @typedef {object} ProjectCommentCreation
- * @property {string} comments - Comment text.
- * @property {number} projectId - The id of project (comment of project)
+ * @property {string} comments - Comment text. 
  */
-export interface IProjectCommentCreationAttributes extends Omit<ICommentAttribute, 'taskId' | 'id' | 'commentDate'> {
+export interface IProjectCommentCreationAttributes extends Omit<ICommentAttribute, 'taskId' | 'id' | 'commentDate' | 'projectId'> {
 }
 
 /**
  * Task comment creation info
  * @typedef {object} TaskCommentCreation
  * @property {string} comments - Comment text.
- * @property {number} taskId - The id of task
  */
-export interface ITaskCommentCreationAttribute extends Omit<ICommentAttribute, 'projectId' | 'id' | 'commentDate'> {
+export interface ITaskCommentCreationAttribute extends Omit<ICommentAttribute, 'projectId' | 'id' | 'commentDate' | 'taskId'> {
 }
 
 export const COMMENTS_TABLE = 'comments';
@@ -58,7 +56,7 @@ export const COMMENTS_TABLE = 'comments';
 export class CommentModel extends Model<ICommentAttribute, ICommentCreationAttributes>
     implements ICommentAttribute {
     public commentDate!: Date;
-    public projectId!: number;
+    public projectId?: number;
     public taskId?: number | undefined;
     public id!: number;
     public comments!: string;
@@ -86,7 +84,7 @@ CommentModel.init(
         },
         projectId: {
             type: DataTypes.INTEGER,
-            allowNull: false,
+            allowNull: true,
             references: {
                 model: ProjectModel,
                 key: 'id'
@@ -113,7 +111,9 @@ CommentModel.init(
 
 UserModel.hasMany(CommentModel, { foreignKey: 'userId' });
 CommentModel.belongsTo(UserModel, { foreignKey: 'userId' });
-TaskModel.hasMany(CommentModel, { foreignKey: 'taskId' });
-CommentModel.belongsTo(TaskModel, { foreignKey: 'taskId' });
-ProjectModel.hasMany(CommentModel, { foreignKey: 'projectId' });
-CommentModel.belongsTo(ProjectModel, { foreignKey: 'projectId' });
+
+export const TaskCommentAssociation = TaskModel.hasMany(CommentModel, { foreignKey: 'taskId', as: 'comments' });
+export const CommentTaskAssociation = CommentModel.belongsTo(TaskModel, { foreignKey: 'taskId', as: 'task' });
+
+export const ProjectCommentAssociation = ProjectModel.hasMany(CommentModel, { foreignKey: 'projectId', as: 'comments' });
+export const CommentProjectAssociation = CommentModel.belongsTo(ProjectModel, { foreignKey: 'projectId', as: 'project' });

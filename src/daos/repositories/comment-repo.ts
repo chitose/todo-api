@@ -1,11 +1,20 @@
-import { CommentModel, COMMENTS_TABLE, ICommentAttribute, IUserProjectsAttribute, USER_PROJECTS_TABLE } from '@daos/models';
-import { getKey } from '@shared/utils';
-import { Op, QueryTypes } from 'sequelize';
+import {
+    CommentModel,
+    CommentProjectAssociation,
+    CommentTaskAssociation,
+    ProjectModel,
+    ProjectUserAssociation,
+    TaskModel,
+    TaskProjectAssociation,
+    UserModel,
+} from '@daos/models';
+import { Op } from 'sequelize';
 
 import { IProjectRepository } from './project-repo';
 import { ITaskRepository } from './task-repo';
 
 export interface ICommentsRepository {
+    search(userId: string, text: string): Promise<CommentModel[]>;
 
     addProjectComment(userId: string, projId: number, comments: string): Promise<CommentModel>;
 
@@ -30,14 +39,65 @@ class CommentsRepository implements ICommentsRepository {
 
     }
 
+    async search(userId: string, text: string): Promise<CommentModel[]> {
+        const projectComments = await CommentModel.findAll({
+            where: {
+                comments: { [Op.like]: `%${text}%` }
+            },
+            include: [
+                {
+                    model: ProjectModel,
+                    required: true,
+                    as: TaskProjectAssociation.as,
+                    attributes: [],
+                    include: [{
+                        model: UserModel,
+                        as: ProjectUserAssociation.as,
+                        where: {
+                            id: userId
+                        },
+                        attributes: []
+                    }]
+                }]
+        });
+
+        const taskComments = await CommentModel.findAll({
+            where: {
+                comments: { [Op.like]: `%${text}%` }
+            },
+            include: [
+                {
+                    model: TaskModel,
+                    as: CommentTaskAssociation.as,
+                    required: true,
+                    attributes: [],
+                    include: [{
+                        model: ProjectModel,
+                        as: TaskProjectAssociation.as,
+                        attributes: [],
+                        include: [{
+                            model: UserModel,
+                            as: ProjectUserAssociation.as,
+                            where: {
+                                id: userId
+                            },
+                            attributes: []
+                        }]
+                    }]
+                }
+            ]
+        });
+
+        return [...projectComments, ...taskComments];
+    }
+
     async addTaskComment(userId: string, projId: number, taskId: number, comments: string): Promise<CommentModel> {
         const task = await this.taskRepo.getTask(userId, taskId);
-        if (task) {
+        if (!task) {
             throw new Error('Task not found');
         }
 
         return await CommentModel.create({
-            projectId: projId,
             taskId: taskId,
             commentDate: new Date(),
             comments: comments,
@@ -65,39 +125,63 @@ class CommentsRepository implements ICommentsRepository {
         });
     }
 
-    async getTaskComments(userId: string, taskId: number): Promise<CommentModel[]> {
-        return await CommentModel.sequelize?.query(`
-        SELECT c.* from ${COMMENTS_TABLE} c left join ${USER_PROJECTS_TABLE} up
-        ON c.${getKey<ICommentAttribute>('projectId')} = up.${getKey<IUserProjectsAttribute>('projectId')}
-        AND up.${getKey<IUserProjectsAttribute>('userId')} = : userId
-        WHERE c.${getKey<ICommentAttribute>('taskId')} = : taskId
-        `,
-            {
-                type: QueryTypes.SELECT,
-                model: CommentModel,
-                mapToModel: true,
-                replacements: {
-                    taskId,
-                    userId
-                }
-            }) as CommentModel[];
+    async getTaskComments(userId: string, projectId: number, taskId: number): Promise<CommentModel[]> {
+        return CommentModel.findAll({
+            include: [{
+                model: TaskModel,
+                as: CommentTaskAssociation.as,
+                required: true,
+                where: {
+                    id: taskId
+                },
+                attributes: [],
+                include: [{
+                    model: ProjectModel,
+                    required: true,
+                    as: TaskProjectAssociation.as,
+                    attributes: [],
+                    where: {
+                        id: projectId
+                    },
+                    include: [
+                        {
+                            model: UserModel,
+                            required: true,
+                            as: ProjectUserAssociation.as,
+                            where: {
+                                id: userId
+                            },
+                            attributes: []
+                        }
+                    ]
+                }]
+            }]
+        });
     }
 
     async getProjectComments(userId: string, projectId: number): Promise<CommentModel[]> {
-        return await CommentModel.sequelize?.query(`
-        SELECT c.* from ${COMMENTS_TABLE} left join ${USER_PROJECTS_TABLE} up
-        ON c.${getKey<ICommentAttribute>('projectId')} = up.${getKey<IUserProjectsAttribute>('projectId')}
-        AND up.${getKey<IUserProjectsAttribute>('userId')} = : userId
-        WHERE c.${getKey<ICommentAttribute>('projectId')} = : projectId
-    `, {
-            model: CommentModel,
-            mapToModel: true,
-            type: QueryTypes.SELECT,
-            replacements: {
-                userId,
-                projectId
-            }
-        }) as CommentModel[];
+        return CommentModel.findAll({
+            include: [{
+                model: ProjectModel,
+                required: true,
+                as: CommentProjectAssociation.as,
+                where: {
+                    id: projectId
+                },
+                attributes: [],
+                include: [
+                    {
+                        model: UserModel,
+                        required: true,
+                        as: ProjectUserAssociation.as,
+                        where: {
+                            id: userId
+                        },
+                        attributes: []
+                    }
+                ]
+            }]
+        });
     }
 
     async addProjectComment(userId: string, projId: number, comments: string): Promise<CommentModel> {

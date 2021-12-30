@@ -17,6 +17,7 @@ const taskRepo = getTaskRepository();
  * @description Return all tasks from a project.
  * @param {number} projectId.path.required - The project id
  * @return {array<Task>} 200 - success reponse
+ * @security jwt
  */
 export async function getTasks(req: Request, res: Response) {
     const user = req.user as IUserAttribute;
@@ -36,6 +37,7 @@ export async function getTasks(req: Request, res: Response) {
  * @param {number} targetSectionId.path - The target project id
  * @return 204 - success response
  * @return {ErrorResponse} - 400 - Bad request response
+ * @security jwt
  */
 export async function moveTask(req: Request, res: Response) {
     const user = req.user as IUserAttribute;
@@ -57,6 +59,7 @@ export async function moveTask(req: Request, res: Response) {
  * @param {number} projectId.path.required - The project id
  * @param {number} taskId.path.required - The task id
  * @return {Task} 200 - success response
+ * @security jwt
  */
 export async function getTask(req: Request, res: Response) {
     const user = req.user as IUserAttribute
@@ -76,6 +79,7 @@ export async function getTask(req: Request, res: Response) {
  * @param {number} targetTaskId.path.required - The target task id
  * @return {array<Task>} 200 - success response
  * @return {ErrorResponse} 400 - Bad request response
+ * @security jwt
  */
 export async function swapTaskOrder(req: Request, res: Response) {
     const user = req.user as IUserAttribute;
@@ -100,6 +104,7 @@ export async function swapTaskOrder(req: Request, res: Response) {
  * @param {TaskCreation} request.body.required - The udpate info
  * @return {Task} 200 - success response
  * @return {ErrorResponse} 400 - Bad request response
+ * @security jwt
  */
 export async function updateTask(req: Request, res: Response) {
     const user = req.user as IUserAttribute;
@@ -123,6 +128,7 @@ export async function updateTask(req: Request, res: Response) {
  * @param {number} taskId.path.required - The task id
  * @return 201 - Success response
  * @return {ErrorResponse} 400 - Bad request response
+ * @security jwt
  */
 export async function deleteTask(req: Request, res: Response) {
     const user = req.user as IUserAttribute;
@@ -152,6 +158,7 @@ export async function deleteTask(req: Request, res: Response) {
  * @param {AssignTask} request.body.required - The assign task request
  * @return {Task} 200 - success response
  * @return {Task} 400 - bad request reponse
+ * @security jwt
  */
 export async function assignTask(req: Request, res: Response) {
     const user = req.user as IUserAttribute;
@@ -181,6 +188,7 @@ export async function assignTask(req: Request, res: Response) {
  * @param {TaskPriorityRequest} request.body.required - The task priority request
  * @return {Task} 200 - success response
  * @return {Task} 400 - bad request reponse
+ * @security jwt
  */
 export async function setTaskPriority(req: Request, res: Response) {
     const user = req.user as IUserAttribute;
@@ -206,6 +214,7 @@ export async function setTaskPriority(req: Request, res: Response) {
  * @param {number} taskId.path.required - The task id
  * @return {Task} 200 - success response
  * @return {Task} 400 - bad request reponse
+ * @security jwt
  */
 //     completeTask(userId: string, taskId: number): Promise<TaskModel>;
 export async function completeTask(req: Request, res: Response) {
@@ -235,6 +244,7 @@ export async function completeTask(req: Request, res: Response) {
  * @param {TaskDueDateRequest} request.body.required - The due date request
  * @return {Task} 200 - success response
  * @return {Task} 400 - bad request reponse
+ * @security jwt
  */
 //     setTaskDueDate(userId: string, taskId: number, dueDate: Date): Promise<TaskModel>;
 export async function setTaskDueDate(req: Request, res: Response) {
@@ -260,6 +270,7 @@ export async function setTaskDueDate(req: Request, res: Response) {
  * @param {number} taskId.path.required - The task id
  * @return {Task} 201 - success response
  * @return {Task} 400 - bad request reponse
+ * @security jwt
  */
 //     duplicateTask(userId: string, taskId: number): Promise<TaskModel>;
 export async function duplicateTask(req: Request, res: Response) {
@@ -283,6 +294,7 @@ export async function duplicateTask(req: Request, res: Response) {
  * @param {TaskCreation} request.body.required - The task info
  * @return {Task} 201 - success response
  * @return {Task} 400 - bad request reponse
+ * @security jwt
  */
 //     createTask(userId: string, taskProp: ITaskCreationAttributes): Promise<TaskModel>;
 export async function createTask(req: Request, res: Response) {

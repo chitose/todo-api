@@ -2,7 +2,7 @@ import db from '@daos/sqlite3/sqlite-dao';
 import { getKey } from '@shared/utils';
 import { DataTypes, HasManyGetAssociationsMixin, Model } from 'sequelize';
 
-import { ILabelAttribute, LabelModel, ProjectModel, UserModel } from '.';
+import { CommentModel, ILabelAttribute, LabelModel, ProjectModel, UserModel } from '.';
 import { autoIncrementIdColumn } from './columns';
 import { SectionModel } from './section';
 
@@ -18,7 +18,7 @@ export enum TaskPriority {
  *
  * @typedef {object} TaskCreation
  * @property {string} title - The title
- * @property {description} - The task description
+ * @property {string} description - The task description
  * @property {string} dueDate - The task due date
  * @property {number} priority - The task priority (0-3)
  * @property {number} projectId - The project id
@@ -37,7 +37,7 @@ export interface ITaskCreationAttributes {
     projectId: number;
     assignTo?: string;
     sectionId?: number;
-    completed: boolean;
+    completed?: boolean;
     taskOrder?: number;
     labels?: Partial<ILabelAttribute>[];
     parentTaskId?: number;
@@ -50,7 +50,7 @@ export interface ITaskCreationAttributes {
  * @typedef {object} Task
  * @property {number} id - The task id
  * @property {string} title - The title
- * @property {description} - The task description
+ * @property {string} description - The task description
  * @property {string} dueDate - The task due date
  * @property {number} priority - The task priority (0-3)
  * @property {number} projectId - The project id
@@ -76,11 +76,13 @@ export class TaskModel extends Model<ITaskAttribute, ITaskCreationAttributes> im
     public projectId!: number;
     public assignTo?: string | undefined;
     public sectionId?: number | undefined;
-    public completed!: boolean;
+    public completed?: boolean;
 
     public readonly labels?: LabelModel[];
 
     public readonly subTasks?: TaskModel[];
+
+    public readonly comments?: CommentModel[];
 
     public getSubTasks!: HasManyGetAssociationsMixin<TaskModel>;
 }
@@ -108,7 +110,8 @@ TaskModel.init(
         },
         completed: {
             type: DataTypes.BOOLEAN,
-            allowNull: false
+            allowNull: false,
+            defaultValue: false
         },
         taskOrder: {
             type: DataTypes.INTEGER,

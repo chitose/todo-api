@@ -1,6 +1,7 @@
 import db from '@daos/sqlite3/sqlite-dao';
 import { DataTypes, Model, Optional } from 'sequelize';
 
+import { CommentModel } from '.';
 import { autoIncrementIdColumn } from './columns';
 import { UserModel } from './user';
 
@@ -47,6 +48,7 @@ export class ProjectModel extends Model<IProjectAttribute, IProjectCreationAttri
     public defaultInbox!: boolean;
 
     public readonly users?: UserModel[];
+    public readonly comments?: CommentModel[];
 }
 
 export const PROJECTS_TABLE = 'projects';

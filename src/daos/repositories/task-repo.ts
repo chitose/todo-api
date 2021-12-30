@@ -1,10 +1,12 @@
 import {
+    CommentModel,
     IProjectAttribute,
     ITaskCreationAttributes,
     ITaskLabelAttribute,
     LabelModel,
     ProjectModel,
     ProjectUserAssociation,
+    TaskCommentAssociation,
     TaskLabelAssociation,
     TaskLabelModel,
     TaskModel,
@@ -20,6 +22,10 @@ import { Includeable, Op } from 'sequelize';
 import { IProjectRepository } from './project-repo';
 
 export interface ITaskRepository {
+    search(userId: string, text: string): Promise<TaskModel[]>;
+
+    getUpCommingTasks(id: string): Promise<TaskModel[]>;
+
     getTasks(userId: string, projectId: number): Promise<TaskModel[]>;
 
     moveTask(userId: string, projectId: number, targetProjectId: number, targetSectId?: number): Promise<void>;
@@ -43,10 +49,13 @@ export interface ITaskRepository {
     setTaskDueDate(userId: string, taskId: number, dueDate: Date): Promise<TaskModel>;
 
     duplicateTask(userId: string, taskId: number): Promise<TaskModel>;
+
+    getTodayTasks(userId: string): Promise<TaskModel[]>;
 }
 
 class TaskRepository implements ITaskRepository {
     constructor(private projectRepo: IProjectRepository) { }
+
     private getCommonUserInclude(userId: string): Includeable[] {
         return [
             {
@@ -79,6 +88,42 @@ class TaskRepository implements ITaskRepository {
                 ]
             }
         ];
+    }
+
+    search(userId: string, text: string): Promise<TaskModel[]> {
+        return TaskModel.findAll({
+            where: {
+                [Op.or]: {
+                    title: { [Op.like]: `%${text}%` },
+                    description: { [Op.like]: `%${text}%` }
+                }
+            },
+            include: this.getCommonUserInclude(userId)
+        });
+    }
+
+    getUpCommingTasks(userId: string): Promise<any[]> {
+        const today = new Date();
+        return TaskModel.findAll({
+            where: {
+                dueDate: {
+                    [Op.or]: {
+                        [Op.lt]: today,
+                        [Op.gt]: today
+                    }
+                }
+            },
+            include: this.getCommonUserInclude(userId)
+        });
+    }
+
+    getTodayTasks(userId: string): Promise<TaskModel[]> {
+        return TaskModel.findAll({
+            where: {
+                dueDate: { [Op.lte]: new Date() }
+            },
+            include: this.getCommonUserInclude(userId)
+        });
     }
 
     async getTasks(userId: string, projectId: number): Promise<TaskModel[]> {
@@ -144,7 +189,11 @@ class TaskRepository implements ITaskRepository {
                     [Op.eq]: taskId
                 }
             },
-            include: this.getCommonUserInclude(userId)
+            include: [...this.getCommonUserInclude(userId),
+            {
+                model: CommentModel,
+                as: TaskCommentAssociation.as
+            }]
         });
     }
 

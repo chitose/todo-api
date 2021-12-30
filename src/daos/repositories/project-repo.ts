@@ -1,12 +1,17 @@
 import {
+    CommentModel,
     IProjectCreationAttributes,
+    ProjectCommentAssociation,
     ProjectModel,
     ProjectUserAssociation,
     UserModel,
     UserProjectsModel,
 } from '@daos/models';
+import { Op } from 'sequelize/dist';
 
 export interface IProjectRepository {
+    search(userId: string, text: string): Promise<ProjectModel[]>;
+
     createProject(userId: string, proj: IProjectCreationAttributes): Promise<ProjectModel | null>;
 
     shareProject(userId: string, projId: number, sharedWithUsers: string[]): Promise<void>;
@@ -19,6 +24,25 @@ export interface IProjectRepository {
 }
 
 class ProjectRepository implements IProjectRepository {
+    async search(userId: string, text: string): Promise<ProjectModel[]> {
+        return ProjectModel.findAll({
+            where: {
+                name: { [Op.like]: `%${text}%` }
+            },
+            include: {
+                model: UserModel,
+                where: {
+                    id: userId
+                },
+                as: ProjectUserAssociation.as,
+                attributes: [],
+                through: {
+                    attributes: []
+                }
+            }
+        });
+    }
+
     async deleteProject(userId: string, projId: number): Promise<void> {
         const proj = await this.get(userId, projId);
         if (!proj) {
@@ -89,7 +113,11 @@ class ProjectRepository implements IProjectRepository {
             where: {
                 id: projId
             },
-            include: {
+            include: [{
+                model: CommentModel,
+                as: ProjectCommentAssociation.as
+            },
+            {
                 model: UserModel,
                 required: true,
                 where: {
@@ -98,7 +126,7 @@ class ProjectRepository implements IProjectRepository {
                 as: ProjectUserAssociation.as,
                 attributes: [],
                 through: { attributes: [] }
-            }
+            }]
         });
     }
 }

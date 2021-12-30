@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { IProjectCreationAttributes, IUserAttribute, ViewType } from '@daos/models';
 import { getProjectRepository } from '@daos/repositories';
 import { getKey } from '@shared/utils';
@@ -31,6 +30,7 @@ import {
     updateTask,
 } from './tasks';
 
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 
 const repo = getProjectRepository();
