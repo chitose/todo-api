@@ -1,7 +1,10 @@
 import { IUserAttribute } from '@daos/models';
 import { getSearchRepository, getTaskRepository } from '@daos/repositories';
+import { getKey } from '@shared/utils';
 import { Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
+
+import { RouteParams } from './route-params';
 
 const taskRepo = getTaskRepository();
 const searchRepo = getSearchRepository();
@@ -19,6 +22,10 @@ export class ViewRouteUrlBuilder {
 
     public search(query?: string) {
         return this.getUrl(`/search${query ? '/' + query : '/:query?'}`);
+    }
+
+    public tasksByLabel(labelId?: number | string) {
+        return this.getUrl(`/view/label/${labelId ? labelId : ':' + getKey<RouteParams>('labelId')}`);
     }
 
     private getUrl(url: string) {
@@ -68,5 +75,20 @@ export async function search(req: Request, res: Response) {
     const user = req.user as IUserAttribute;
     const { query } = req.params;
     const results = await searchRepo.search(user.id, query);
+    return res.status(StatusCodes.OK).json(results);
+}
+
+/**
+ * GET /api/view/label/{labelId}
+ *
+ * @summary Get all tasks tagged by label
+ * @param {number} labelId.path.required - The label id
+ * @param {array<Task>} 200 - Success response
+ * @security jwt
+ */
+export async function tasksByLabel(req: Request, res: Response) {
+    const user = req.user as IUserAttribute;
+    const { labelId } = new RouteParams(req);
+    const results = await taskRepo.getLabelTasks(user.id, labelId);
     return res.status(StatusCodes.OK).json(results);
 }

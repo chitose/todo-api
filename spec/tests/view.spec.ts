@@ -60,6 +60,10 @@ describe('ViewRouter', () => {
         return agent.get(viewUrlBuilder.upcomming()).set('Authorization', auth);
     }
 
+    const callTasksByLabelApi = (auth: string, labelId: number) => {
+        return agent.get(viewUrlBuilder.tasksByLabel(labelId)).set('Authorization', auth);
+    }
+
     beforeAll((done) => {
         agent = supertest.agent(createServer(''));
         // prepare test data
@@ -71,6 +75,7 @@ describe('ViewRouter', () => {
                 callAddProjectTaskApi(user1.auth!, project.id, {
                     title: 'Task one',
                     description: 'Task one',
+                    labels: [{ id: 1 }, { id: 2 }],
                     projectId: project.id,
                     dueDate: moment().add(-1, 'days').toDate()
                 }).end((e1, r1) => {
@@ -78,6 +83,7 @@ describe('ViewRouter', () => {
                         callAddProjectTaskApi(user1.auth!, project.id, {
                             title: 'Task two',
                             description: 'Task two',
+                            labels: [{ id: 2 }, { id: 3 }],
                             projectId: project.id,
                             dueDate: moment().add(1, 'days').toDate()
                         }).end((e2, r2) => {
@@ -120,7 +126,36 @@ describe('ViewRouter', () => {
                 expect(overdueTask).toBeDefined();
                 expect(todayTask).toBeDefined();
                 expect(upcommingTask).toBeUndefined();
+                done();
             });
+        });
+    });
+
+    it('should return overdued tasks and upcomming tasks', done => {
+        callAddProjectTaskApi(user1.auth!, project.id, {
+            title: 'Task due today',
+            dueDate: moment().toDate(),
+            projectId: project.id,
+            description: 'Task due today'
+        }).end((e, r) => {
+            callUpcommingTasksApi(user1.auth!).end((e1, r1) => {
+                const tasks = r1.body as ITaskAttribute[];
+                expect(tasks.every(t => t.dueDate)).toBeTrue();
+                const overdueTask = tasks.find(t => moment(t.dueDate).isBefore(moment()));
+                const todayTask = tasks.find(t => moment(t.dueDate).isSame(moment(), 'day'));
+                const upcommingTask = tasks.find(t => moment(t.dueDate).isAfter(moment()));
+                expect(overdueTask).toBeDefined();
+                expect(todayTask).toBeUndefined();
+                expect(upcommingTask).toBeDefined();
+                done();
+            });
+        });
+    });
+
+    it('should return tasks tagged by label', done => {
+        callTasksByLabelApi(user1.auth!, 1).end((e1, r1) => {
+            const tasks = r1.body as ITaskAttribute[];
+            expect(tasks.length).toBe(1);
             done();
         });
     });

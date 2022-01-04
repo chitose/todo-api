@@ -7,7 +7,6 @@ export interface ILabelRepository {
     createLabel(userId: string, name: string): Promise<LabelModel>;
     deleteLabel(userId: string, id: number): Promise<void>;
     search(userId: string, text: string): Promise<LabelModel[]>;
-    addTaskLabels(userId: string, taskId: number, labels: number[]): Promise<void>;
 }
 
 class LabelRepository implements ILabelRepository {
@@ -43,18 +42,6 @@ class LabelRepository implements ILabelRepository {
                 }
             }
         });
-    }
-
-    async addTaskLabels(userId: string, taskId: number, labels: number[]): Promise<void> {
-        // const task = await this.taskRepo.getTask(userId, taskId);
-        // if (!task) {
-        //     throw new Error('Task not found');
-        // }
-
-        // await TaskLabelModel.bulkCreate(labels.map(lid => ({
-        //     taskId: taskId,
-        //     labelId: lid,
-        // })));
     }
 }
 

@@ -17,6 +17,7 @@ import {
     UserModel,
 } from '@daos/models';
 import { getKey } from '@shared/utils';
+import moment from 'moment';
 import { Includeable, Op } from 'sequelize';
 
 import { IProjectRepository } from './project-repo';
@@ -51,6 +52,8 @@ export interface ITaskRepository {
     duplicateTask(userId: string, taskId: number): Promise<TaskModel>;
 
     getTodayTasks(userId: string): Promise<TaskModel[]>;
+
+    getLabelTasks(userId: string, labelId: number): Promise<TaskModel[]>;
 }
 
 class TaskRepository implements ITaskRepository {
@@ -102,14 +105,51 @@ class TaskRepository implements ITaskRepository {
         });
     }
 
+    getLabelTasks(userId: string, labelId: number): Promise<TaskModel[]> {
+        return TaskModel.findAll({
+            include: [{
+                model: LabelModel,
+                as: TaskLabelAssociation.as,
+                attributes: ['id', 'title'],
+                where: {
+                    id: labelId
+                },
+                through: {
+                    attributes: []
+                }
+            },
+            {
+                model: TaskModel,
+                as: TaskSubTaskAssociation.as
+            },
+            {
+                model: ProjectModel,
+                required: true,
+                as: TaskProjectAssociation.as,
+                attributes: [getKey<IProjectAttribute>('id')],
+                include: [
+                    {
+                        model: UserModel,
+                        required: true,
+                        as: ProjectUserAssociation.as,
+                        where: {
+                            id: userId
+                        },
+                        attributes: []
+                    }
+                ]
+            }]
+        });
+    }
+
     getUpCommingTasks(userId: string): Promise<any[]> {
         const today = new Date();
         return TaskModel.findAll({
             where: {
                 dueDate: {
                     [Op.or]: {
-                        [Op.lt]: today,
-                        [Op.gt]: today
+                        [Op.lt]: moment(today).startOf('day').toDate(),
+                        [Op.gt]: moment(today).endOf('day').toDate()
                     }
                 }
             },
@@ -120,7 +160,7 @@ class TaskRepository implements ITaskRepository {
     getTodayTasks(userId: string): Promise<TaskModel[]> {
         return TaskModel.findAll({
             where: {
-                dueDate: { [Op.lte]: new Date() }
+                dueDate: { [Op.lte]: moment(new Date()).endOf('day').toDate() }
             },
             include: this.getCommonUserInclude(userId)
         });
