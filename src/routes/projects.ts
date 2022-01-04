@@ -190,6 +190,7 @@ async function updateProject(req: Request, res: Response) {
  * @param {number} targetProjectId.path.required - The target project id
  * @return {array<Project>} 200 - success response
  * @return {ErrorResponse} 400 - Bad request response
+ * @security jwt
  */
 async function swapProjectOrder(req: Request, res: Response) {
     const user = req.user as IUserAttribute;

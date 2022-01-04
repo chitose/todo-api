@@ -99,9 +99,11 @@ export function configureAuthentication(app: express.Express, appSecret: string)
                         });
                     }
                 });
-        } else {
+        } else if (req.method !== 'OPTIONS') {
             res.status(401)
                 .send({ message: 'Missing JWT authorization header' });
+        } else {
+            next();
         }
     });
 }

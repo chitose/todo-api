@@ -65,6 +65,8 @@ export default function createServer(swaggerTestUserToken: string): express.Expr
         app.use(helmet());
     }
 
+    app.use(cors());
+
     // enable pre-flight across-the-board
     app.options('*', cors() as any) // include before other routes
 

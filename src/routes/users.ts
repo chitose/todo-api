@@ -30,9 +30,21 @@ async function searchUsers(req: Request, res: Response) {
     return res.status(StatusCodes.OK).json(users);
 }
 
+/**
+ * GET /api/users/validate
+ * @summary Validate user authentication
+ * @return 204 - Success response
+ * @return 401 - Invalid authentication
+ * @security jwt
+ */
+function validateUser(req: Request, res: Response) {
+    return res.status(StatusCodes.NO_CONTENT).send();
+}
+
 // User-route
 const userRouter = Router();
 userRouter.get('/all', getAllUsers);
 userRouter.get('/search/:text?', searchUsers);
+userRouter.get('/validate', validateUser);
 
 export default userRouter;
