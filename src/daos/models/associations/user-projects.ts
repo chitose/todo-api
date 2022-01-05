@@ -10,6 +10,7 @@ export interface IUserProjectInfo {
     props: {
         owner: boolean;
         order: number;
+        favorite: boolean;
     }
 }
 
@@ -25,18 +26,21 @@ export interface IUserProjectInfo {
  * @typedef {object} UserProjectProp
  * @property {boolean} owner - True if user is the owner of the project
  * @property {number} order - The order of the project
+ * @property {boolean} favorite - The favorite status of the project
  */
 export interface IUserProjectsAttribute {
     userId: string;
     projectId: number;
     owner?: boolean;
     order: number;
+    favorite?: boolean;
 }
 export class UserProjectsModel extends Model<IUserProjectsAttribute, IUserProjectsAttribute> implements IUserProjectsAttribute {
     public userId!: string;
     public projectId!: number;
     public owner?: boolean;
     public order!: number;
+    public favorite?: boolean | undefined;
 }
 
 export const USER_PROJECTS_TABLE = 'user_projects';
@@ -65,6 +69,11 @@ UserProjectsModel.init(
         order: {
             type: DataTypes.INTEGER,
             allowNull: false
+        },
+        favorite: {
+            type: DataTypes.BOOLEAN,
+            allowNull: true,
+            defaultValue: false
         }
     },
     {

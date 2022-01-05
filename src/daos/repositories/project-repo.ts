@@ -30,9 +30,30 @@ export interface IProjectRepository {
     updateProject(userId: string, projectId: number, prop: Partial<IProjectCreationAttributes>): Promise<ProjectModel>;
 
     swapProjectOrder(userId: string, sourceProject: number, targetProject: number): Promise<ProjectModel[]>;
+
+    addToFavorite(userId: string, projectId: number): Promise<void>;
+
+    removeFavorite(userId: string, projectId: number): Promise<void>;
 }
 
 class ProjectRepository implements IProjectRepository {
+    async addToFavorite(userId: string, projectId: number): Promise<void> {
+        const proj = await UserProjectsModel.findOne({ where: { userId: userId, projectId: projectId } });
+        if (!proj) {
+            throw new Error('Project not found');
+        }
+
+        await UserProjectsModel.update({ favorite: true }, { where: { userId: userId, projectId: projectId } });
+    }
+
+    async removeFavorite(userId: string, projectId: number): Promise<void> {
+        const proj = await UserProjectsModel.findOne({ where: { userId: userId, projectId: projectId } });
+        if (!proj) {
+            throw new Error('Project not found');
+        }
+
+        await UserProjectsModel.update({ favorite: false }, { where: { userId: userId, projectId: projectId } });
+    }
     async swapProjectOrder(userId: string, sourceProject: number, targetProject: number): Promise<ProjectModel[]> {
         const projects = await UserProjectsModel.findAll({
             where: {
@@ -143,7 +164,7 @@ class ProjectRepository implements IProjectRepository {
             attributes: [getKey<IUserAttribute>('id')],
             through: {
                 as: 'props',
-                attributes: [getKey<IUserProjectsAttribute>('owner'), getKey<IUserProjectsAttribute>('order')]
+                attributes: [getKey<IUserProjectsAttribute>('owner'), getKey<IUserProjectsAttribute>('order'), getKey<IUserProjectsAttribute>('favorite')]
             }
         };
     }

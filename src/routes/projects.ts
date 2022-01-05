@@ -205,6 +205,48 @@ async function swapProjectOrder(req: Request, res: Response) {
     }
 }
 
+/**
+ * POST /api/projects/{projectId}/addFavorite
+ * @summary Add project to favorite lists
+ * @param {number} projectId.path.required - The project id
+ * @param 204 - Success response
+ * @return {ErrorResponse} 400 - Bad request response
+ * @security jwt
+ */
+async function addFavorite(req: Request, res: Response) {
+    const user = req.user as IUserAttribute;
+    const { projectId } = new RouteParams(req);
+    try {
+        await repo.addToFavorite(user.id, projectId);
+        return res.status(StatusCodes.NO_CONTENT).send();
+    } catch (e: any) {
+        return res.status(StatusCodes.BAD_REQUEST).send({
+            message: e.message
+        });
+    }
+}
+
+/**
+ * POST /api/projects/{projectId}/removeFavorite
+ * @summary Remove project off the favorite lists
+ * @param {number} projectId.path.required - The project id
+ * @param 204 - Success response
+ * @return {ErrorResponse} 400 - Bad request response
+ * @security jwt
+ */
+async function removeFavorite(req: Request, res: Response) {
+    const user = req.user as IUserAttribute;
+    const { projectId } = new RouteParams(req);
+    try {
+        await repo.removeFavorite(user.id, projectId);
+        return res.status(StatusCodes.NO_CONTENT).send();
+    } catch (e: any) {
+        return res.status(StatusCodes.BAD_REQUEST).send({
+            message: e.message
+        });
+    }
+}
+
 
 export class ProjectRouteUrlBuilder {
     public base = '/projects';
@@ -230,6 +272,14 @@ export class ProjectRouteUrlBuilder {
 
     public shareProject(id?: string | number) {
         return `${this.getProjectById(id)}/share`;
+    }
+
+    public addFavorite(id?: string | number) {
+        return `${this.getProjectById(id)}/addFavorite`;
+    }
+
+    public removeFavorite(id?: string | number) {
+        return `${this.getProjectById(id)}/removeFavorite`;
     }
 
     public updateProject(id?: string | number) {
@@ -358,6 +408,8 @@ const projectRouter = Router();
 projectRouter.put(projectRoutes.create(), createProject);
 projectRouter.get(projectRoutes.getProjects(), getProjects);
 projectRouter.post(projectRoutes.updateProject(), updateProject);
+projectRouter.post(projectRoutes.addFavorite(), addFavorite);
+projectRouter.post(projectRoutes.removeFavorite(), removeFavorite);
 projectRouter.get(projectRoutes.getArchivedProjects(), getArchivedProjects);
 projectRouter.get(projectRoutes.getProjectById(), getProject);
 projectRouter.post(projectRoutes.shareProject(), shareProject);

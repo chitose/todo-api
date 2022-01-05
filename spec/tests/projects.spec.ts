@@ -54,6 +54,16 @@ describe('ProjectRouter', () => {
             .set('Authorization', auth);
     }
 
+    const callAddFavoriteApi = (auth: string, id: number) => {
+        return agent.post(projectRouteBuilder.addFavorite(id))
+            .set('Authorization', auth);
+    }
+
+    const callRemoveFavoriteApi = (auth: string, id: number) => {
+        return agent.post(projectRouteBuilder.removeFavorite(id))
+            .set('Authorization', auth);
+    }
+
     describe(`"PUT:${projectRouteBuilder.create()}"`, () => {
         const projData: IProjectCreationAttributes = {
             name: 'Test project 1',
@@ -316,7 +326,61 @@ describe('ProjectRouter', () => {
                 done();
             });
         });
+    });
 
+    describe(`"POST:${projectRouteBuilder.addFavorite()}"`, () => {
+        let project: IProjectAttribute;
+        beforeEach(done => {
+            callCreateProjectApi(user1.auth!, {
+                name: 'Test project',
+                archived: false,
+                view: ViewType.List
+            }).end((err, res) => {
+                project = res.body as IProjectAttribute;
+                done();
+            });
+        });
 
+        it(`it should return ${StatusCodes.NO_CONTENT} when project is added to favorite succesfully.`, done => {
+            callAddFavoriteApi(user1.auth!, project.id).end((e, r) => {
+                expect(r.status).toBe(StatusCodes.NO_CONTENT);
+                done();
+            });
+        });
+
+        it(`it should return ${StatusCodes.BAD_REQUEST} when trying to mark non-collaborated project.`, done => {
+            callAddFavoriteApi(user2.auth!, project.id).end((e, r) => {
+                expect(r.status).toBe(StatusCodes.BAD_REQUEST);
+                done();
+            });
+        });
+    });
+
+    describe(`"POST:${projectRouteBuilder.removeFavorite()}"`, () => {
+        let project: IProjectAttribute;
+        beforeEach(done => {
+            callCreateProjectApi(user1.auth!, {
+                name: 'Test project',
+                archived: false,
+                view: ViewType.List
+            }).end((err, res) => {
+                project = res.body as IProjectAttribute;
+                done();
+            });
+        });
+
+        it(`it should return ${StatusCodes.NO_CONTENT} when project is removed off the favorite succesfully.`, done => {
+            callRemoveFavoriteApi(user1.auth!, project.id).end((e, r) => {
+                expect(r.status).toBe(StatusCodes.NO_CONTENT);
+                done();
+            });
+        });
+
+        it(`it should return ${StatusCodes.BAD_REQUEST} when trying to remove non-collaborated project off the favorite.`, done => {
+            callRemoveFavoriteApi(user2.auth!, project.id).end((e, r) => {
+                expect(r.status).toBe(StatusCodes.BAD_REQUEST);
+                done();
+            });
+        });
     });
 });

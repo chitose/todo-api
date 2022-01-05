@@ -14,6 +14,7 @@ export interface ILabelAttribute {
     id: number;
     title: string;
     userId: string;
+    order: number;
 }
 
 
@@ -29,6 +30,7 @@ export class LabelModel extends Model<ILabelAttribute, ILabelCreationAttribute> 
     public id!: number;
     public title!: string;
     public userId!: string;
+    public order!: number;
 }
 
 export const LABEL_TABLE = 'label';
@@ -47,6 +49,11 @@ LabelModel.init(
                 model: UserModel,
                 key: 'id'
             }
+        },
+        order: {
+            type: DataTypes.NUMBER,
+            allowNull: false,
+            defaultValue: 0
         }
     },
     {

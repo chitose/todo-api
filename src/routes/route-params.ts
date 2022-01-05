@@ -9,6 +9,7 @@ export class RouteParams {
     commentId = 0;
     targetSectionId = 0;
     targetProjectId = 0;
+    targetLabelId = 0;
 
     constructor(req: Request) {
         const keys = Object.keys(this);
