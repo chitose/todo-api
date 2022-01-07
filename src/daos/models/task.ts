@@ -40,8 +40,8 @@ export interface ITaskCreationAttributes {
     completed?: boolean;
     taskOrder?: number;
     labels?: Partial<ILabelAttribute>[];
-    parentTaskId?: number;
     subTasks?: ITaskAttribute[];
+    parentTaskId?: number;
 }
 
 /**
@@ -58,6 +58,7 @@ export interface ITaskCreationAttributes {
  * @property {number} sectionId - The section id
  * @property {boolean} completed - The task completion status
  * @property {number} taskOrder - The order of the task
+ * @property {number} parentTaskId - The id of parent task
  * @property {array<Label>} labels - The labels of the task
  * @property {array<object>} subTasks - The sub tasks.
  */
@@ -77,6 +78,7 @@ export class TaskModel extends Model<ITaskAttribute, ITaskCreationAttributes> im
     public assignTo?: string | undefined;
     public sectionId?: number | undefined;
     public completed?: boolean;
+    public parentTaskId?: number;
 
     public readonly labels?: LabelModel[];
 

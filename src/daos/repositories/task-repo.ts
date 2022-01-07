@@ -18,7 +18,7 @@ import {
 } from '@daos/models';
 import { getKey } from '@shared/utils';
 import moment from 'moment';
-import { Includeable, Op } from 'sequelize';
+import { Includeable, Op, Sequelize } from 'sequelize';
 
 import { IProjectRepository } from './project-repo';
 
@@ -57,7 +57,9 @@ export interface ITaskRepository {
 }
 
 class TaskRepository implements ITaskRepository {
-    constructor(private projectRepo: IProjectRepository) { }
+    constructor(private projectRepo: IProjectRepository) {
+        projectRepo.taskRepo = this;
+    }
 
     private getCommonUserInclude(userId: string): Includeable[] {
         return [
@@ -68,10 +70,6 @@ class TaskRepository implements ITaskRepository {
                 through: {
                     attributes: []
                 }
-            },
-            {
-                model: TaskModel,
-                as: TaskSubTaskAssociation.as
             },
             {
                 model: ProjectModel,
@@ -171,6 +169,17 @@ class TaskRepository implements ITaskRepository {
             where: {
                 projectId: projectId
             },
+            attributes: {
+                include: [
+                    [
+                        Sequelize.literal(`(
+                        SELECT ${getKey<TaskSubTaskModel>('taskId')}
+                        FROM ${TaskSubTaskModel.tableName}
+                        WHERE ${getKey<TaskSubTaskModel>('taskId')} = TaskModel.${getKey<TaskModel>('id')}
+                        )`), 'parentTaskId'
+                    ]
+                ]
+            },
             include: this.getCommonUserInclude(userId)
         });
     }
@@ -233,6 +242,13 @@ class TaskRepository implements ITaskRepository {
             {
                 model: CommentModel,
                 as: TaskCommentAssociation.as
+            },
+            {
+                model: TaskModel,
+                as: TaskSubTaskAssociation.as,
+                through: {
+                    attributes: []
+                }
             }]
         });
     }
@@ -387,7 +403,7 @@ class TaskRepository implements ITaskRepository {
             // using destructuring will not work becaus task is proxy object
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const dupTask = await self.createTask(userId, {
-                title: task.title,
+                title: `Copy of ${task.title}`,
                 description: task.description,
                 completed: task.completed,
                 assignTo: task.assignTo,

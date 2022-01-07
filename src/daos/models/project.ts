@@ -1,8 +1,9 @@
 import db from '@daos/sqlite3/sqlite-dao';
 import { DataTypes, Model, Optional } from 'sequelize';
 
-import { CommentModel, IUserProjectInfo } from '.';
+import { CommentModel, IUserProjectInfo, TaskModel } from '.';
 import { autoIncrementIdColumn } from './columns';
+import { SectionModel } from './section';
 
 export enum ViewType {
     List = 1,
@@ -36,9 +37,14 @@ export interface IProjectAttribute {
  * @property {string} name.required - The project name
  * @property {number} view - The view type (1 or 2)
  * @property {boolean} archived - The project archive status
+ * @property {number} aboveProject - The id of project that this project will be created with less order
+ * @proeprty {number} belowProject - THe id of project that this project will be created with greater order
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface IProjectCreationAttributes extends Optional<IProjectAttribute, 'id' | 'defaultInbox'> { }
+export interface IProjectCreationAttributes extends Optional<IProjectAttribute, 'id' | 'defaultInbox'> {
+    aboveProject?: number;
+    belowProject?: number;
+}
 
 export class ProjectModel extends Model<IProjectAttribute, IProjectCreationAttributes>
     implements IProjectAttribute {
@@ -51,6 +57,8 @@ export class ProjectModel extends Model<IProjectAttribute, IProjectCreationAttri
 
     public readonly users?: IUserProjectInfo[];
     public readonly comments?: CommentModel[];
+    public getSections!: () => Promise<SectionModel[]>;
+    public getTasks!: () => Promise<TaskModel[]>;
 }
 
 export const PROJECTS_TABLE = 'projects';

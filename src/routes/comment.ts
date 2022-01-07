@@ -46,7 +46,7 @@ export async function getProjectComments(req: Request, res: Response) {
 }
 
 /**
- * PUT /api/projects/{projectId}/task/{taskId}/comment
+ * PUT /api/projects/{projectId}/tasks/{taskId}/comment
  *
  * @summary Add task comment
  * @param {TaskCommentCreation} request.body.required - comment information
@@ -68,7 +68,7 @@ export async function addTaskComment(req: Request, res: Response) {
 }
 
 /**
- * GET /api/projects/{projectId}/task/{taskId}/comment
+ * GET /api/projects/{projectId}/tasks/{taskId}/comment
  *
  * @summary Get task comments
  * @param {number} projectId.path.required - The project id

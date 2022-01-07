@@ -1,5 +1,6 @@
-import { ISectionCreationAttribute, SectionModel } from '@daos/models/section';
-import { Includeable, Op } from 'sequelize/dist';
+import { ISectionCreationAttribute, SectionModel, SectionProjectAssociation } from '@daos/models/section';
+import { getKey } from '@shared/utils';
+import { Includeable, Op, Sequelize } from 'sequelize/dist';
 
 import {
     ITaskSubTaskAttribute,
@@ -29,10 +30,22 @@ class SectionRepository implements ISectionRepository {
     private getCommonInclude(userId: string): Includeable[] {
         return [{
             model: TaskModel,
-            as: SectionTaskAssociation.as
+            as: SectionTaskAssociation.as,
+            attributes: {
+                include: [
+                    [
+                        Sequelize.literal(`(
+                        SELECT ${getKey<TaskSubTaskModel>('taskId')}
+                        FROM ${TaskSubTaskModel.tableName}
+                        WHERE ${getKey<TaskSubTaskModel>('taskId')} = ${SectionTaskAssociation.as}.${getKey<TaskModel>('id')}
+                        )`), 'parentTaskId'
+                    ]
+                ]
+            }
         },
         {
             model: ProjectModel,
+            as: SectionProjectAssociation.as,
             required: true,
             include: [{
                 model: UserModel,
@@ -50,7 +63,7 @@ class SectionRepository implements ISectionRepository {
     async getSections(userId: string, projectId: number): Promise<SectionModel[]> {
         return SectionModel.findAll({
             where: {
-                projectId: projectId
+                projectId: projectId,
             },
             include: this.getCommonInclude(userId)
         });
@@ -60,7 +73,7 @@ class SectionRepository implements ISectionRepository {
         const sect = await SectionModel.findOne({
             where: {
                 id: sectId,
-                projectId: projectId
+                projectId: projectId,
             },
             include: this.getCommonInclude(userId)
         });
@@ -179,12 +192,11 @@ class SectionRepository implements ISectionRepository {
 
         const t = await SectionModel.sequelize?.transaction();
         try {
-            const newSection = await this.addSection(userId, projId, section.name);
+            const newSection = await this.addSection(userId, projId, `Copy of ${section.name}`);
             const tasks = (section.tasks || []).slice();
             const taskMap = new Map<number, number>();
-
             for (const task of tasks) {
-                const duplicateRootTask = await this.taskRepo.createTask(userId, {
+                const duplicateTask = await this.taskRepo.createTask(userId, {
                     title: task.title,
                     description: task.description,
                     completed: task.completed,
@@ -193,17 +205,18 @@ class SectionRepository implements ISectionRepository {
                     dueDate: task.dueDate,
                     priority: task.priority,
                     taskOrder: task.taskOrder,
+                    labels: task.labels,
                     sectionId: newSection.id
                 });
-                taskMap.set(task.id, duplicateRootTask.id);
+                taskMap.set(task.id, duplicateTask.id);
             }
 
             // duplicate relation ship of tasks
             const bulkCreate: ITaskSubTaskAttribute[] = [];
+
             for (const task of tasks) {
-                const subTasks = await task.getSubTasks();
-                if (subTasks.length > 0) {
-                    bulkCreate.push(...subTasks.map(st => ({ taskId: taskMap.get(task.id), subTaskId: taskMap.get(st.id) } as ITaskSubTaskAttribute)));
+                if (task.parentTaskId !== null && task.parentTaskId !== undefined) {
+                    bulkCreate.push({ taskId: taskMap.get(task.parentTaskId), subTaskId: taskMap.get(task.id) } as ITaskSubTaskAttribute);
                 }
             }
 

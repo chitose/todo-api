@@ -28,7 +28,7 @@ export async function getTasks(req: Request, res: Response) {
 
 //     moveSectionTasks(userId: string, projectId: number, sectId: number, targetProjectId: number): Promise<void>;
 /**
- * POST /api/projects/{projectId}/task/{taskId}/move/{targetProjectId}/{targetSectionId}
+ * POST /api/projects/{projectId}/tasks/{taskId}/move/{targetProjectId}/{targetSectionId}
  * @summary Move task to other project
  * @description Move a task from a project to another one.
  * @param {number} projectId.path.required - The source project id
@@ -52,7 +52,7 @@ export async function moveTask(req: Request, res: Response) {
 
 
 /**
- * GET /api/projects/{projectId}/task/{taskId}
+ * GET /api/projects/{projectId}/tasks/{taskId}
  *
  * @summary Get task info
  * @description Return a single task info by id
@@ -70,7 +70,7 @@ export async function getTask(req: Request, res: Response) {
 
 
 /**
- * POST /api/projects/{projectId}/task/{taskId}/swapOrder/{targetTaskId}
+ * POST /api/projects/{projectId}/tasks/{taskId}/swapOrder/{targetTaskId}
  *
  * @summary Swap task order
  * @description Swap the order of 2 tasks
@@ -95,7 +95,7 @@ export async function swapTaskOrder(req: Request, res: Response) {
 
 
 /**
- * POST /api/projects/{projectId}/task/{taskId}
+ * POST /api/projects/{projectId}/tasks/{taskId}
  *
  * @summary Update task info
  * @description Update task
@@ -120,7 +120,7 @@ export async function updateTask(req: Request, res: Response) {
 
 
 /**
- * DELETE /api/projects/{projectId}/task/{taskId}
+ * DELETE /api/projects/{projectId}/tasks/{taskId}
  *
  * @summary Delete a task
  * @description Delete a task
@@ -149,7 +149,7 @@ export async function deleteTask(req: Request, res: Response) {
  */
 
 /**
- * POST /api/projects/{projectId}/task/{taskId}/assignTask
+ * POST /api/projects/{projectId}/tasks/{taskId}/assignTask
  *
  * @summary Assign task to a user
  * @description Assign a task to a user
@@ -179,7 +179,7 @@ export async function assignTask(req: Request, res: Response) {
  */
 
 /**
- * POST /api/projects/{projectId}/task/{taskId}/priority
+ * POST /api/projects/{projectId}/tasks/{taskId}/priority
  *
  * @summary Set the task priority
  * @description Set the task priority
@@ -206,7 +206,7 @@ export async function setTaskPriority(req: Request, res: Response) {
 }
 
 /**
- * POST /api/projects/{projectId}/task/{taskId}/complete
+ * POST /api/projects/{projectId}/tasks/{taskId}/complete
  *
  * @summary Set task as done
  * @description Mark the task as done
@@ -235,7 +235,7 @@ export async function completeTask(req: Request, res: Response) {
  */
 
 /**
- * POST /api/projects/{projectId}/task/{taskId}/duedate
+ * POST /api/projects/{projectId}/tasks/{taskId}/duedate
  *
  * @summary Set the task due date
  * @description Set the task due date
@@ -262,7 +262,7 @@ export async function setTaskDueDate(req: Request, res: Response) {
 }
 
 /**
- * POST /api/projects/{projectId}/task/{taskId}/duplicate
+ * POST /api/projects/{projectId}/tasks/{taskId}/duplicate
  *
  * @summary Duplicate the task
  * @description Duplicate the task (and its sub-tasks)
@@ -286,7 +286,7 @@ export async function duplicateTask(req: Request, res: Response) {
 }
 
 /**
- * PUT /api/projects/{projectId}/task
+ * PUT /api/projects/{projectId}/tasks
  *
  * @summary Create a new task
  * @description Create a new task

@@ -247,6 +247,49 @@ async function removeFavorite(req: Request, res: Response) {
     }
 }
 
+/**
+ * POST /api/projects/{projectId}/leave
+ * @summary Leave the project
+ * @param {number} projectId.path.required - The project id
+ * @param 204 - Success response
+ * @return {ErrorResponse} 400 - Bad request response
+ * @security jwt
+ */
+async function leaveProject(req: Request, res: Response) {
+    const user = req.user as IUserAttribute;
+    const { projectId } = new RouteParams(req);
+    try {
+        await repo.leaveProject(user.id, projectId);
+        return res.status(StatusCodes.NO_CONTENT).send();
+    } catch (e: any) {
+        return res.status(StatusCodes.BAD_REQUEST).send({
+            message: e.message
+        });
+    }
+}
+
+/**
+ * POST /api/projects/{projectId}/duplicate
+ * @summary Duplicate the project
+ * @param {number} projectId.path.required - The project id
+ * @param {Project} 201 - Success response
+ * @return {ErrorResponse} 400 - Bad request response
+ * @security jwt
+ */
+async function duplicateProject(req: Request, res: Response) {
+    const user = req.user as IUserAttribute;
+    const { projectId } = new RouteParams(req);
+    try {
+        const proj = await repo.duplicateProject(user.id, projectId);
+
+        return res.status(StatusCodes.CREATED).json(proj);
+    } catch (e: any) {
+        return res.status(StatusCodes.BAD_REQUEST).send({
+            message: e.message
+        });
+    }
+}
+
 
 export class ProjectRouteUrlBuilder {
     public base = '/projects';
@@ -282,8 +325,16 @@ export class ProjectRouteUrlBuilder {
         return `${this.getProjectById(id)}/removeFavorite`;
     }
 
+    public leave(id?: string | number) {
+        return `${this.getProjectById(id)}/leave`;
+    }
+
     public updateProject(id?: string | number) {
         return this.getProjectById(id);
+    }
+
+    public duplicateProject(id?: string | number) {
+        return `${this.getProjectById(id)}/duplicate`;
     }
 
     public swapProjectOrder(id?: string | number, targetProjectId?: string | number) {
@@ -323,11 +374,11 @@ export class ProjectRouteUrlBuilder {
     }
 
     public createTask(projId?: string | number) {
-        return `${this.getProjectById(projId)}/task`;
+        return `${this.getProjectById(projId)}/tasks`;
     }
 
     public createSectionTask(projId?: string | number, sectionId?: string | number) {
-        return `${this.updateSection(projId, sectionId)}/task`;
+        return `${this.updateSection(projId, sectionId)}/tasks`;
     }
 
 
@@ -336,7 +387,7 @@ export class ProjectRouteUrlBuilder {
     }
 
     public getTask(projectId?: number | string, taskId?: number | string) {
-        return `${this.getProjectById(projectId)}/task/${(taskId ? taskId : ':' + getKey<RouteParams>('taskId'))}`;
+        return `${this.getProjectById(projectId)}/tasks/${(taskId ? taskId : ':' + getKey<RouteParams>('taskId'))}`;
     }
 
     public duplicateTask(projectId?: number | string, taskId?: number | string) {
@@ -410,6 +461,8 @@ projectRouter.get(projectRoutes.getProjects(), getProjects);
 projectRouter.post(projectRoutes.updateProject(), updateProject);
 projectRouter.post(projectRoutes.addFavorite(), addFavorite);
 projectRouter.post(projectRoutes.removeFavorite(), removeFavorite);
+projectRouter.post(projectRoutes.leave(), leaveProject);
+projectRouter.post(projectRoutes.duplicateProject(), duplicateProject);
 projectRouter.get(projectRoutes.getArchivedProjects(), getArchivedProjects);
 projectRouter.get(projectRoutes.getProjectById(), getProject);
 projectRouter.post(projectRoutes.shareProject(), shareProject);

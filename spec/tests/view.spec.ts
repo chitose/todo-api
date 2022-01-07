@@ -155,7 +155,7 @@ describe('ViewRouter', () => {
     it('should return tasks tagged by label', done => {
         callTasksByLabelApi(user1.auth!, 1).end((e1, r1) => {
             const tasks = r1.body as ITaskAttribute[];
-            expect(tasks.length).toBe(1);
+            expect(tasks.every(t => t.labels?.find(l => l.id === 1))).toBeTrue();
             done();
         });
     });

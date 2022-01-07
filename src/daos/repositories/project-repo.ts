@@ -1,18 +1,28 @@
 import {
     CommentModel,
     IProjectCreationAttributes,
+    ITaskSubTaskAttribute,
     IUserAttribute,
     IUserProjectsAttribute,
     ProjectCommentAssociation,
     ProjectModel,
     ProjectUserAssociation,
+    TaskSubTaskModel,
     UserModel,
     UserProjectsModel,
 } from '@daos/models';
+import { SectionModel } from '@daos/models/section';
 import { getKey } from '@shared/utils';
+import _ from 'lodash';
 import { Op } from 'sequelize';
 
+import { ITaskRepository } from './task-repo';
+
 export interface IProjectRepository {
+    taskRepo: ITaskRepository;
+
+    duplicateProject(userId: string, projectId: number): Promise<ProjectModel>;
+
     search(userId: string, text: string): Promise<ProjectModel[]>;
 
     createProject(userId: string, proj: IProjectCreationAttributes): Promise<ProjectModel | null>;
@@ -34,9 +44,92 @@ export interface IProjectRepository {
     addToFavorite(userId: string, projectId: number): Promise<void>;
 
     removeFavorite(userId: string, projectId: number): Promise<void>;
+
+    leaveProject(userId: string, projectId: number): Promise<void>;
 }
 
 class ProjectRepository implements IProjectRepository {
+    public taskRepo!: ITaskRepository;
+
+    async duplicateProject(userId: string, projectId: number): Promise<ProjectModel> {
+        const prj = await this.get(userId, projectId);
+
+        if (!prj) {
+            throw new Error('Project not found');
+        }
+
+        const t = await ProjectModel.sequelize?.transaction();
+        try {
+
+            const dupProj = await this.createProject(userId, {
+                name: `Copy of ${prj?.name}`,
+                view: prj.view,
+                archived: prj.archived,
+                defaultInbox: false
+            });
+
+            const sectionMap = new Map<number, number>();
+            const taskMap = new Map<number, number>();
+
+            const sections = await prj.getSections();
+            for (const sect of sections) {
+                const dupSect = await SectionModel.create({
+                    name: sect.name,
+                    projectId: dupProj!.id,
+                    order: sect.order
+                });
+                sectionMap.set(sect.id, dupSect.id);
+            }
+            const tasks = await prj.getTasks();
+
+            for (const task of tasks) {
+                const duplicateTask = await this.taskRepo.createTask(userId, {
+                    title: task.title,
+                    description: task.description,
+                    completed: task.completed,
+                    projectId: task.projectId,
+                    assignTo: task.assignTo,
+                    dueDate: task.dueDate,
+                    labels: task.labels,
+                    priority: task.priority,
+                    taskOrder: task.taskOrder,
+                    sectionId: task.sectionId ? sectionMap.get(task.sectionId) : undefined
+                });
+                taskMap.set(task.id, duplicateTask.id);
+            }
+
+            // duplicate relation ship of tasks
+            const bulkCreate: ITaskSubTaskAttribute[] = [];
+            for (const task of tasks) {
+                if (task.parentTaskId !== null && task.parentTaskId !== undefined) {
+                    bulkCreate.push({ taskId: taskMap.get(task.parentTaskId), subTaskId: taskMap.get(task.id) } as ITaskSubTaskAttribute);
+                }
+            }
+
+            await TaskSubTaskModel.bulkCreate(bulkCreate);
+
+            await t?.commit();
+
+            return dupProj as ProjectModel;
+        } catch (e) {
+            await t?.rollback();
+            throw e;
+        }
+    }
+
+    async leaveProject(userId: string, projectId: number): Promise<void> {
+        const projs = await UserProjectsModel.findAll({ where: { projectId: projectId } });
+        if (!projs.find(p => p.userId === userId)) {
+            throw new Error('Project not found');
+        }
+
+        if (projs.length === 1) {
+            throw new Error('You cannot leave the project without other collaborators');
+        }
+
+        await UserProjectsModel.destroy({ where: { userId, projectId } });
+    }
+
     async addToFavorite(userId: string, projectId: number): Promise<void> {
         const proj = await UserProjectsModel.findOne({ where: { userId: userId, projectId: projectId } });
         if (!proj) {
@@ -190,18 +283,56 @@ class ProjectRepository implements IProjectRepository {
     async createProject(userId: string, proj: IProjectCreationAttributes): Promise<ProjectModel | null> {
         const t = await ProjectModel.sequelize?.transaction();
         try {
-            const rProj = await ProjectModel.create(proj);
-
-            const order = await UserProjectsModel.max<number, UserProjectsModel>('order', {
-                where: {
-                    userId: userId
+            const { name, archived, view, aboveProject, belowProject, defaultInbox } = proj;
+            const rProj = await ProjectModel.create({ name, view, archived, defaultInbox });
+            let order = 0;
+            if (aboveProject) {
+                const aboveProjectOrder = await UserProjectsModel.findOne({ where: { userId, projectId: aboveProject } });
+                // get all projects with order <= aboveProject
+                const aboveProjects = await UserProjectsModel.findAll({ where: { userId, order: { [Op.lte]: aboveProjectOrder?.order } } });
+                const ap = aboveProjects.find(p => p.projectId === aboveProject);
+                if (aboveProjects.length === 1) {
+                    order = aboveProjects[0].order - 1;
+                } else {
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+                    order = _.maxBy(aboveProjects, p => p.order)?.order as number - 1;
+                    for (const p of aboveProjects) {
+                        if (p === ap) {
+                            continue;
+                        }
+                        await UserProjectsModel.update({ order: p.order - 1 }, { where: { userId, projectId: p.projectId } });
+                    }
                 }
-            });
+            } else if (belowProject) {
+                const belowProjectOrder = await UserProjectsModel.findOne({ where: { userId, projectId: belowProject } });
+                // get all projects with order > belowProject
+                const belowProjects = await UserProjectsModel.findAll({ where: { userId, order: { [Op.gte]: belowProjectOrder?.order } } });
+                const ap = belowProjects.find(p => p.projectId === aboveProject);
+                if (belowProjects.length === 1) {
+                    order = belowProjects[0].order + 1;
+                } else {
+                    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+                    order = _.maxBy(belowProjects, p => p.order)?.order as number + 1;
+                    for (const p of belowProjects) {
+                        if (p === ap) {
+                            continue;
+                        }
+                        await UserProjectsModel.update({ order: p.order + 1 }, { where: { userId, projectId: p.projectId } });
+                    }
+                }
+            } else {
+                order = (await UserProjectsModel.max<number, UserProjectsModel>('order', {
+                    where: {
+                        userId: userId
+                    }
+                }) || 0) + 1;
+            }
 
             await UserProjectsModel.create(
                 {
-                    userId: userId, projectId: rProj.id, owner: true, order: (order || 0) + 1
+                    userId: userId, projectId: rProj.id, owner: true, order: order
                 });
+
             await t?.commit();
             return this.get(userId, rProj.id);
         } catch (e) {

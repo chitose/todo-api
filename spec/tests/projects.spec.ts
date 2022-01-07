@@ -64,6 +64,11 @@ describe('ProjectRouter', () => {
             .set('Authorization', auth);
     }
 
+    const callLeaveProjectApi = (auth: string, id: number) => {
+        return agent.post(projectRouteBuilder.leave(id))
+            .set('Authorization', auth);
+    }
+
     describe(`"PUT:${projectRouteBuilder.create()}"`, () => {
         const projData: IProjectCreationAttributes = {
             name: 'Test project 1',
@@ -84,6 +89,30 @@ describe('ProjectRouter', () => {
                     expect(proj.view).toBe(projData.view);
                     expect(proj.defaultInbox).toBeFalse();
                     done();
+                });
+        });
+
+        it('should create project with correct order.', done => {
+            callCreateProjectApi(user1.auth!, projData)
+                .end((err: Error, res) => {
+                    const p1 = res.body as IProjectAttribute;
+
+                    callCreateProjectApi(user1.auth!, { ...projData, aboveProject: p1.id }).end((e1, r1) => {
+                        const p2 = r1.body as IProjectAttribute;
+                        callCreateProjectApi(user1.auth!, { ...projData, belowProject: p1.id }).end((e2, r2) => {
+                            const p3 = r2.body as IProjectAttribute
+                            callGetUserProjectApi(user1.auth!).end((e3, r3) => {
+                                const projects = r3.body as IProjectAttribute[];
+                                const up1 = projects.find(p => p.id === p1.id);
+                                const up2 = projects.find(p => p.id === p2.id);
+                                const up3 = projects.find(p => p.id === p3.id);
+
+                                expect(up1!.users![0].props.order).toBeGreaterThan(up2!.users![0].props.order);
+                                expect(up3!.users![0].props.order).toBeGreaterThan(up1!.users![0].props.order);
+                                done();
+                            });
+                        });
+                    });
                 });
         });
     });
@@ -379,6 +408,36 @@ describe('ProjectRouter', () => {
         it(`it should return ${StatusCodes.BAD_REQUEST} when trying to remove non-collaborated project off the favorite.`, done => {
             callRemoveFavoriteApi(user2.auth!, project.id).end((e, r) => {
                 expect(r.status).toBe(StatusCodes.BAD_REQUEST);
+                done();
+            });
+        });
+    });
+
+    describe(`"POST:${projectRouteBuilder.leave()}"`, () => {
+        let project: IProjectAttribute;
+        beforeEach(done => {
+            callCreateProjectApi(user1.auth!, {
+                name: 'Test project',
+                archived: false,
+                view: ViewType.List
+            }).end((err, res) => {
+                project = res.body as IProjectAttribute;
+                done();
+            });
+        });
+
+        it(`it should return ${StatusCodes.NO_CONTENT} when leave project succesfully.`, done => {
+            callShareProjectApi(user1.auth!, project.id, { users: [user2.id] }).end((e, r) => {
+                callLeaveProjectApi(user1.auth!, project.id).end((e1, r1) => {
+                    expect(r1.status).toBe(StatusCodes.NO_CONTENT);
+                    done();
+                });
+            });
+        });
+
+        it(`it should return ${StatusCodes.BAD_REQUEST} when trying to leave project without other collaborators`, done => {
+            callLeaveProjectApi(user1.auth!, project.id).end((e1, r1) => {
+                expect(r1.status).toBe(StatusCodes.BAD_REQUEST);
                 done();
             });
         });

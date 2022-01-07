@@ -75,5 +75,5 @@ SectionModel.init(
     }
 )
 
-ProjectModel.hasMany(SectionModel, { foreignKey: 'projectId' });
-SectionModel.belongsTo(ProjectModel, { foreignKey: 'projectId' });
+export const ProjectSectionAssociation = ProjectModel.hasMany(SectionModel, { foreignKey: 'projectId', as: 'sections' });
+export const SectionProjectAssociation = SectionModel.belongsTo(ProjectModel, { foreignKey: 'projectId', as: 'project' });
