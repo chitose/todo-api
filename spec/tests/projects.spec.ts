@@ -96,10 +96,10 @@ describe('ProjectRouter', () => {
             callCreateProjectApi(user1.auth!, projData)
                 .end((err: Error, res) => {
                     const p1 = res.body as IProjectAttribute;
-
-                    callCreateProjectApi(user1.auth!, { ...projData, aboveProject: p1.id }).end((e1, r1) => {
+                    const { name, ...newProjData } = projData;
+                    callCreateProjectApi(user1.auth!, { name: `above project ${p1.id}`, ...newProjData, aboveProject: p1.id }).end((e1, r1) => {
                         const p2 = r1.body as IProjectAttribute;
-                        callCreateProjectApi(user1.auth!, { ...projData, belowProject: p1.id }).end((e2, r2) => {
+                        callCreateProjectApi(user1.auth!, { name: `below project ${p2.id}`, ...newProjData, belowProject: p2.id }).end((e2, r2) => {
                             const p3 = r2.body as IProjectAttribute
                             callGetUserProjectApi(user1.auth!).end((e3, r3) => {
                                 const projects = r3.body as IProjectAttribute[];
@@ -108,7 +108,7 @@ describe('ProjectRouter', () => {
                                 const up3 = projects.find(p => p.id === p3.id);
 
                                 expect(up1!.users![0].props.order).toBeGreaterThan(up2!.users![0].props.order);
-                                expect(up3!.users![0].props.order).toBeGreaterThan(up1!.users![0].props.order);
+                                expect(up3!.users![0].props.order).toBeGreaterThan(up2!.users![0].props.order);
                                 done();
                             });
                         });

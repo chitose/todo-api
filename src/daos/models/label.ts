@@ -1,5 +1,5 @@
 import db from '@daos/sqlite3/sqlite-dao';
-import { DataTypes, Model } from 'sequelize';
+import { DataTypes, Model, Optional } from 'sequelize';
 
 import { UserModel } from '.';
 import { autoIncrementIdColumn } from './columns';
@@ -23,8 +23,13 @@ export interface ILabelAttribute {
  *
  * @typedef {object} LabelCreation
  * @property {string} title - The title
+ * @property {number} aboveLabel - The id of label whose order > created label
+ * @property {number} belowLabel - The id of label whose order < created label
  */
-export interface ILabelCreationAttribute extends Omit<ILabelAttribute, 'id'> { }
+export interface ILabelCreationAttribute extends Optional<ILabelAttribute, 'id' | 'order' | 'userId'> {
+    aboveLabel?: number;
+    belowLabel?: number;
+}
 
 export class LabelModel extends Model<ILabelAttribute, ILabelCreationAttribute> implements ILabelAttribute {
     public id!: number;

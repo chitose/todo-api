@@ -1,5 +1,6 @@
 import { Router } from 'express';
 
+import labelRouter from './label';
 import projectRouter, { ProjectRouteUrlBuilder } from './projects';
 import userRouter from './users';
 import { getTodayTasks, getUpcommingTasks, search, tasksByLabel, ViewRouteUrlBuilder } from './view';
@@ -8,7 +9,7 @@ import { getTodayTasks, getUpcommingTasks, search, tasksByLabel, ViewRouteUrlBui
 const baseRouter = Router();
 baseRouter.use('/users', userRouter);
 baseRouter.use(new ProjectRouteUrlBuilder().base, projectRouter);
-
+baseRouter.use('/labels/', labelRouter);
 const viewUrlBuilder = new ViewRouteUrlBuilder();
 
 baseRouter.get(viewUrlBuilder.today(), getTodayTasks);

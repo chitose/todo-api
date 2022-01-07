@@ -50,15 +50,15 @@ export async function prepareTestData() {
         id: user3.id
     }, appSecret);
 
-    await labelRepo.createLabel(user1.id, 'label 1');
-    await labelRepo.createLabel(user1.id, 'label 2');
-    await labelRepo.createLabel(user1.id, 'label 3');
-    await labelRepo.createLabel(user2.id, 'label 1');
-    await labelRepo.createLabel(user2.id, 'label 2');
-    await labelRepo.createLabel(user2.id, 'label 3');
-    await labelRepo.createLabel(user3.id, 'label 1');
-    await labelRepo.createLabel(user3.id, 'label 2');
-    await labelRepo.createLabel(user3.id, 'label 3');
+    await labelRepo.createLabel(user1.id, { title: 'label 1' });
+    await labelRepo.createLabel(user1.id, { title: 'label 2' });
+    await labelRepo.createLabel(user1.id, { title: 'label 3' });
+    await labelRepo.createLabel(user2.id, { title: 'label 1' });
+    await labelRepo.createLabel(user2.id, { title: 'label 2' });
+    await labelRepo.createLabel(user2.id, { title: 'label 3' });
+    await labelRepo.createLabel(user3.id, { title: 'label 1' });
+    await labelRepo.createLabel(user3.id, { title: 'label 2' });
+    await labelRepo.createLabel(user3.id, { title: 'label 3' });
 }
 
 export { user1, user2, user3 }

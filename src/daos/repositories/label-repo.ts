@@ -1,10 +1,12 @@
-import { LabelModel } from '@daos/models';
+import { ILabelCreationAttribute, LabelModel } from '@daos/models';
 import { Op } from 'sequelize';
 
 import { ITaskRepository } from './task-repo';
 
 export interface ILabelRepository {
-    createLabel(userId: string, name: string): Promise<LabelModel>;
+    getLabels(userId: string): Promise<LabelModel[]>;
+    renameLabel(userId: string, id: number, name: string): Promise<LabelModel>;
+    createLabel(userId: string, prop: ILabelCreationAttribute): Promise<LabelModel>;
     deleteLabel(userId: string, id: number): Promise<void>;
     swapLabelOrder(userId: string, id: number, targetLabelId: number): Promise<LabelModel[]>;
     search(userId: string, text: string): Promise<LabelModel[]>;
@@ -14,17 +16,47 @@ class LabelRepository implements ILabelRepository {
     constructor(private taskRepo: ITaskRepository) {
     }
 
-    async createLabel(userId: string, name: string): Promise<LabelModel> {
-        const maxOrder = await LabelModel.max<number, LabelModel>('order', {
-            where: {
-                userId: userId
+    getLabels(userId: string): Promise<LabelModel[]> {
+        return LabelModel.findAll({ where: { userId: userId } });
+    }
+
+    async renameLabel(userId: string, id: number, name: string): Promise<LabelModel> {
+        await LabelModel.update({ title: name }, { where: { userId, id } });
+        return LabelModel.findByPk(id) as unknown as LabelModel;
+    }
+
+    async createLabel(userId: string, prop: ILabelCreationAttribute): Promise<LabelModel> {
+        const { aboveLabel, belowLabel } = prop;
+        let maxOrder = 0;
+        if (aboveLabel) {
+            const targetLabel = await LabelModel.findByPk(aboveLabel);
+            const aboveLabels = await LabelModel.findAll({ where: { userId, order: { [Op.lt]: targetLabel?.order } } });
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            maxOrder = targetLabel!.order - 1;
+            for (const l of aboveLabels) {
+                await LabelModel.update({ order: l.order - 1 }, { where: { id: l.id } });
             }
-        });
+        } else if (belowLabel) {
+            const targetLabel = await LabelModel.findByPk(belowLabel);
+            const belowLabels = await LabelModel.findAll({ where: { userId, order: { [Op.gt]: targetLabel?.order } } });
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            maxOrder = targetLabel!.order + 1;
+            for (const l of belowLabels) {
+                await LabelModel.update({ order: l.order + 1 }, { where: { id: l.id } });
+            }
+        } else {
+            maxOrder = await LabelModel.max<number, LabelModel>('order', {
+                where: {
+                    userId: userId
+                }
+            });
+            maxOrder = (maxOrder || 0) + 1;
+        }
 
         return LabelModel.create({
-            title: name,
+            title: prop.title,
             userId,
-            order: (maxOrder || 0) + 1
+            order: maxOrder
         });
     }
 

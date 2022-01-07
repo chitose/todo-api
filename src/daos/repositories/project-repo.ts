@@ -13,7 +13,6 @@ import {
 } from '@daos/models';
 import { SectionModel } from '@daos/models/section';
 import { getKey } from '@shared/utils';
-import _ from 'lodash';
 import { Op } from 'sequelize';
 
 import { ITaskRepository } from './task-repo';
@@ -287,38 +286,22 @@ class ProjectRepository implements IProjectRepository {
             const rProj = await ProjectModel.create({ name, view, archived, defaultInbox });
             let order = 0;
             if (aboveProject) {
-                const aboveProjectOrder = await UserProjectsModel.findOne({ where: { userId, projectId: aboveProject } });
+                const targetProject = await UserProjectsModel.findOne({ where: { userId, projectId: aboveProject } });
                 // get all projects with order <= aboveProject
-                const aboveProjects = await UserProjectsModel.findAll({ where: { userId, order: { [Op.lte]: aboveProjectOrder?.order } } });
-                const ap = aboveProjects.find(p => p.projectId === aboveProject);
-                if (aboveProjects.length === 1) {
-                    order = aboveProjects[0].order - 1;
-                } else {
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-                    order = _.maxBy(aboveProjects, p => p.order)?.order as number - 1;
-                    for (const p of aboveProjects) {
-                        if (p === ap) {
-                            continue;
-                        }
-                        await UserProjectsModel.update({ order: p.order - 1 }, { where: { userId, projectId: p.projectId } });
-                    }
+                const aboveProjects = await UserProjectsModel.findAll({ where: { userId, order: { [Op.lt]: targetProject?.order } } });
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                order = targetProject!.order - 1;
+                for (const p of aboveProjects) {
+                    await UserProjectsModel.update({ order: p.order - 1 }, { where: { userId, projectId: p.projectId } });
                 }
             } else if (belowProject) {
-                const belowProjectOrder = await UserProjectsModel.findOne({ where: { userId, projectId: belowProject } });
+                const targetProject = await UserProjectsModel.findOne({ where: { userId, projectId: belowProject } });
                 // get all projects with order > belowProject
-                const belowProjects = await UserProjectsModel.findAll({ where: { userId, order: { [Op.gte]: belowProjectOrder?.order } } });
-                const ap = belowProjects.find(p => p.projectId === aboveProject);
-                if (belowProjects.length === 1) {
-                    order = belowProjects[0].order + 1;
-                } else {
-                    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
-                    order = _.maxBy(belowProjects, p => p.order)?.order as number + 1;
-                    for (const p of belowProjects) {
-                        if (p === ap) {
-                            continue;
-                        }
-                        await UserProjectsModel.update({ order: p.order + 1 }, { where: { userId, projectId: p.projectId } });
-                    }
+                const belowProjects = await UserProjectsModel.findAll({ where: { userId, order: { [Op.gt]: targetProject?.order } } });
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                order = targetProject!.order + 1;
+                for (const p of belowProjects) {
+                    await UserProjectsModel.update({ order: p.order + 1 }, { where: { userId, projectId: p.projectId } });
                 }
             } else {
                 order = (await UserProjectsModel.max<number, UserProjectsModel>('order', {
