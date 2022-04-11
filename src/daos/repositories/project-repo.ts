@@ -6,14 +6,16 @@ import {
     IUserProjectsAttribute,
     ProjectCommentAssociation,
     ProjectModel,
+    ProjectTaskAssociation,
     ProjectUserAssociation,
+    TaskModel,
     TaskSubTaskModel,
     UserModel,
     UserProjectsModel,
 } from '@daos/models';
 import { SectionModel } from '@daos/models/section';
 import { getKey } from '@shared/utils';
-import { Op } from 'sequelize';
+import { Op, Sequelize } from 'sequelize';
 
 import { ITaskRepository } from './task-repo';
 
@@ -267,7 +269,19 @@ class ProjectRepository implements IProjectRepository {
             where: {
                 archived: false
             },
-            include: this.getCommonProjectInclude(userId)
+            attributes: {
+                include: [
+                    [Sequelize.fn('COUNT', Sequelize.col('tasks.id')), 'taskCount']
+                ]
+            },
+            include: [
+                this.getCommonProjectInclude(userId),
+                {
+                    model: TaskModel, attributes: [],
+                    as: ProjectTaskAssociation.as
+                }
+            ],
+            group: [`ProjectModel.${getKey<ProjectModel>('id')}`]
         });
     }
 

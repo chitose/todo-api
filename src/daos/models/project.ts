@@ -21,6 +21,7 @@ export enum ViewType {
  * @property {string} createdAt - The created date
  * @property {string} modifiedAt - The modified date
  * @property {array<UserProject>} users - The project extra info
+ * @property {number} taskCount - The total tasks in the project
  */
 export interface IProjectAttribute {
     id: number;
@@ -29,6 +30,7 @@ export interface IProjectAttribute {
     archived: boolean;
     defaultInbox: boolean;
     users?: IUserProjectInfo[];
+    taskCount?: number;
 }
 
 /**
