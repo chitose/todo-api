@@ -38,7 +38,7 @@ export interface IProjectAttribute {
  * @property {number} view - The view type (1 or 2)
  * @property {boolean} archived - The project archive status
  * @property {number} aboveProject - The id of project that this project will be created with less order
- * @proeprty {number} belowProject - THe id of project that this project will be created with greater order
+ * @property {number} belowProject - THe id of project that this project will be created with greater order
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
 export interface IProjectCreationAttributes extends Optional<IProjectAttribute, 'id' | 'defaultInbox'> {

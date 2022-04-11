@@ -166,6 +166,7 @@ async function deleteProject(req: Request, res: Response) {
  * POST /api/projects/{id}
  * @summary Update a project
  * @param {number} id.path.required - The project id
+ * @param {ProjectCreation} request.body.required - project info
  * @return {Project} 200 - success response
  * @return {ErrorResponse} 400 - bad request reponse
  * @security jwt

@@ -64,7 +64,8 @@ class ProjectRepository implements IProjectRepository {
                 name: `Copy of ${prj?.name}`,
                 view: prj.view,
                 archived: prj.archived,
-                defaultInbox: false
+                defaultInbox: false,
+                belowProject: prj.id
             });
 
             const sectionMap = new Map<number, number>();

@@ -9,7 +9,7 @@ yarn add
 ```
 
 ## Start development
-
+copy sample.vn to development.env and fill in GOOGLE AUTH section
 ```
 yarn run start:dev
 ```
