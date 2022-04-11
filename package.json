@@ -1,6 +1,8 @@
 {
   "name": "todo-api",
-  "version": "0.0.0",
+  "license": "MIT",
+  "description": "todo-api using typescript, sequalize",
+  "version": "1.0.0",
   "scripts": {
     "build": "./node_modules/.bin/ts-node build.ts",
     "lint": "eslint . --ext .ts",
