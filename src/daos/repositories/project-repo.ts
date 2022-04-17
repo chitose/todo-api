@@ -189,7 +189,7 @@ class ProjectRepository implements IProjectRepository {
     }
 
     async updateProject(userId: string, projectId: number, prop: Partial<IProjectCreationAttributes>): Promise<ProjectModel> {
-        const { archived, name } = prop;
+        const { archived, name, view } = prop;
         const proj = await this.get(userId, projectId);
         if (!proj) {
             throw new Error('Project not found');
@@ -204,6 +204,10 @@ class ProjectRepository implements IProjectRepository {
 
         if (name !== undefined) {
             updateProp.name = name;
+        }
+
+        if (view !== undefined) {
+            updateProp.view = view;
         }
 
         await ProjectModel.update(updateProp, { where: { id: projectId } });
