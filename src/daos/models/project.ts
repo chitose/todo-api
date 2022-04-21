@@ -11,6 +11,38 @@ export enum ViewType {
 }
 
 /**
+ * Project creation
+ * @typedef {object} ProjectCreation
+ * @property {string} name.required - The project name
+ * @property {number} view - The view type (1 or 2)
+ * @property {number} aboveProject - The id of project that this project will be created with less order
+ * @property {number} belowProject - THe id of project that this project will be created with greater order
+ */
+export interface IProjectCreationAttributes {
+    name: string;
+    view: ViewType;
+    aboveProject?: number;
+    belowProject?: number;
+    archived?: boolean;
+    defaultInbox?: boolean;
+}
+
+/**
+ * Project update info
+ * @typedef {object} ProjectModification
+ * @property {string} name.required - The project name
+ * @property {number} view - The view type (1 or 2)
+ * @property {string} groupBy - The column to group tasks
+ * @property {string} sortBy - The column to sort tasks
+ * @property {string} sortDir - The sort direction, Asc or Desc
+ */
+export interface IProjectUpdateAttributes extends Omit<IProjectCreationAttributes, 'aboveProject' | 'belowProject'> {
+    groupBy?: string;
+    sortBy?: string;
+    sortDir?: string;
+}
+
+/**
  * A project
  * @typedef {object} Project
  * @property {number} id - The project id
@@ -22,33 +54,17 @@ export enum ViewType {
  * @property {string} modifiedAt - The modified date
  * @property {array<UserProject>} users - The project extra info
  * @property {number} taskCount - The total tasks in the project
+ * @property {string} groupBy - The column to group tasks
+ * @property {string} sortBy - The column to sort tasks
+ * @property {string} sortDir - The sort direction, Asc or Desc
  */
-export interface IProjectAttribute {
+export interface IProjectAttribute extends IProjectUpdateAttributes {
     id: number;
-    name: string;
-    view: ViewType;
-    archived: boolean;
-    defaultInbox: boolean;
     users?: IUserProjectInfo[];
     taskCount?: number;
 }
 
-/**
- * Project creation
- * @typedef {object} ProjectCreation
- * @property {string} name.required - The project name
- * @property {number} view - The view type (1 or 2)
- * @property {boolean} archived - The project archive status
- * @property {number} aboveProject - The id of project that this project will be created with less order
- * @property {number} belowProject - THe id of project that this project will be created with greater order
- */
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface IProjectCreationAttributes extends Optional<IProjectAttribute, 'id' | 'defaultInbox'> {
-    aboveProject?: number;
-    belowProject?: number;
-}
-
-export class ProjectModel extends Model<IProjectAttribute, IProjectCreationAttributes>
+export class ProjectModel extends Model<IProjectAttribute, IProjectCreationAttributes & IProjectUpdateAttributes>
     implements IProjectAttribute {
     public id!: number;
     public name!: string;
@@ -56,6 +72,9 @@ export class ProjectModel extends Model<IProjectAttribute, IProjectCreationAttri
     public archived!: boolean;
 
     public defaultInbox!: boolean;
+    public groupBy?: string | undefined;
+    public sortBy?: string | undefined;
+    public sortDir = 'Asc';
 
     public readonly users?: IUserProjectInfo[];
     public readonly comments?: CommentModel[];
@@ -85,6 +104,21 @@ ProjectModel.init(
             type: DataTypes.BOOLEAN,
             allowNull: false,
             defaultValue: false
+        },
+        groupBy: {
+            type: DataTypes.STRING(255),
+            allowNull: true,
+            defaultValue: ''
+        },
+        sortBy: {
+            type: DataTypes.STRING(255),
+            allowNull: true,
+            defaultValue: ''
+        },
+        sortDir: {
+            type: DataTypes.STRING(10),
+            allowNull: false,
+            defaultValue: 'Asc'
         }
     }, {
     tableName: PROJECTS_TABLE,

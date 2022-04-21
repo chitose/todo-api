@@ -1,6 +1,7 @@
 import {
     CommentModel,
     IProjectCreationAttributes,
+    IProjectUpdateAttributes,
     ITaskSubTaskAttribute,
     IUserAttribute,
     IUserProjectsAttribute,
@@ -18,7 +19,6 @@ import { getKey } from '@shared/utils';
 import { Op, Sequelize } from 'sequelize';
 
 import { ITaskRepository } from './task-repo';
-
 export interface IProjectRepository {
     taskRepo: ITaskRepository;
 
@@ -26,7 +26,7 @@ export interface IProjectRepository {
 
     search(userId: string, text: string): Promise<ProjectModel[]>;
 
-    createProject(userId: string, proj: IProjectCreationAttributes): Promise<ProjectModel | null>;
+    createProject(userId: string, proj: IProjectCreationAttributes & IProjectUpdateAttributes): Promise<ProjectModel | null>;
 
     shareProject(userId: string, projId: number, sharedWithUsers: string[]): Promise<void>;
 
@@ -38,7 +38,7 @@ export interface IProjectRepository {
 
     deleteProject(userId: string, projId: number): Promise<void>;
 
-    updateProject(userId: string, projectId: number, prop: Partial<IProjectCreationAttributes>): Promise<ProjectModel>;
+    updateProject(userId: string, projectId: number, prop: Partial<IProjectUpdateAttributes>): Promise<ProjectModel>;
 
     swapProjectOrder(userId: string, sourceProject: number, targetProject: number): Promise<ProjectModel[]>;
 
@@ -66,8 +66,10 @@ class ProjectRepository implements IProjectRepository {
                 name: `Copy of ${prj?.name}`,
                 view: prj.view,
                 archived: prj.archived,
-                defaultInbox: false,
-                belowProject: prj.id
+                belowProject: prj.id,
+                sortDir: prj.sortDir,
+                groupBy: prj.groupBy,
+                sortBy: prj.sortBy
             });
 
             const sectionMap = new Map<number, number>();
@@ -188,14 +190,14 @@ class ProjectRepository implements IProjectRepository {
         });
     }
 
-    async updateProject(userId: string, projectId: number, prop: Partial<IProjectCreationAttributes>): Promise<ProjectModel> {
-        const { archived, name, view } = prop;
+    async updateProject(userId: string, projectId: number, prop: Partial<IProjectUpdateAttributes>): Promise<ProjectModel> {
+        const { archived, name, view, groupBy, sortBy, sortDir } = prop;
         const proj = await this.get(userId, projectId);
         if (!proj) {
             throw new Error('Project not found');
         }
 
-        const updateProp: Partial<IProjectCreationAttributes> = {
+        const updateProp: Partial<IProjectUpdateAttributes> = {
         };
 
         if (archived !== undefined) {
@@ -208,6 +210,18 @@ class ProjectRepository implements IProjectRepository {
 
         if (view !== undefined) {
             updateProp.view = view;
+        }
+
+        if (groupBy !== undefined) {
+            updateProp.groupBy = groupBy;
+        }
+
+        if (sortBy != undefined) {
+            updateProp.sortBy = sortBy;
+        }
+
+        if (sortDir != undefined) {
+            updateProp.sortDir = sortDir;
         }
 
         await ProjectModel.update(updateProp, { where: { id: projectId } });
@@ -298,11 +312,11 @@ class ProjectRepository implements IProjectRepository {
         });
     }
 
-    async createProject(userId: string, proj: IProjectCreationAttributes): Promise<ProjectModel | null> {
+    async createProject(userId: string, proj: IProjectCreationAttributes & IProjectUpdateAttributes): Promise<ProjectModel | null> {
         const t = await ProjectModel.sequelize?.transaction();
         try {
-            const { name, archived, view, aboveProject, belowProject, defaultInbox } = proj;
-            const rProj = await ProjectModel.create({ name, view, archived, defaultInbox });
+            const { name, view, aboveProject, belowProject, archived, groupBy, sortDir, sortBy, defaultInbox } = proj;
+            const rProj = await ProjectModel.create({ name, view, archived: Boolean(archived), defaultInbox, groupBy, sortDir, sortBy });
             let order = 0;
             if (aboveProject) {
                 const targetProject = await UserProjectsModel.findOne({ where: { userId, projectId: aboveProject } });

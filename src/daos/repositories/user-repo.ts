@@ -74,8 +74,8 @@ class UserRepository implements IUserRepository {
         await this.projectRepo.createProject(user.id, {
             name: 'Inbox',
             view: ViewType.List,
-            archived: false,
-            defaultInbox: true
+            defaultInbox: true,
+            sortDir: 'Asc'
         });
         return user;
     }
@@ -87,4 +87,4 @@ class UserRepository implements IUserRepository {
 
 export function createUserRepository(projectRepo: IProjectRepository) {
     return new UserRepository(projectRepo);
-};
+}

@@ -1,4 +1,4 @@
-import { IProjectCreationAttributes, IUserAttribute, ViewType } from '@daos/models';
+import { IProjectCreationAttributes, IProjectUpdateAttributes, IUserAttribute, ViewType } from '@daos/models';
 import { getProjectRepository } from '@daos/repositories';
 import { getKey } from '@shared/utils';
 import { Request, Response, Router } from 'express';
@@ -52,7 +52,7 @@ const repo = getProjectRepository();
 async function createProject(req: Request, res: Response) {
     const user = req.user as IUserAttribute;
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { defaultInbox, ...proj } = req.body as IProjectCreationAttributes;
+    const { archived, defaultInbox, ...proj } = req.body as IProjectCreationAttributes & IProjectUpdateAttributes;
     if (!proj.name) {
         return res.status(StatusCodes.PRECONDITION_REQUIRED)
             .send({ message: 'name is required.' });
@@ -166,7 +166,7 @@ async function deleteProject(req: Request, res: Response) {
  * POST /api/projects/{id}
  * @summary Update a project
  * @param {number} id.path.required - The project id
- * @param {ProjectCreation} request.body.required - project info
+ * @param {ProjectModification} request.body.required - project info
  * @return {Project} 200 - success response
  * @return {ErrorResponse} 400 - bad request reponse
  * @security jwt
@@ -175,7 +175,7 @@ async function updateProject(req: Request, res: Response) {
     const user = req.user as IUserAttribute;
     const { projectId } = new RouteParams(req);
     try {
-        const proj = await repo.updateProject(user.id, projectId, req.body as IProjectCreationAttributes);
+        const proj = await repo.updateProject(user.id, projectId, req.body as IProjectUpdateAttributes);
         return res.status(StatusCodes.OK).send(proj);
     } catch (e: any) {
         return res.status(StatusCodes.BAD_REQUEST).send({
