@@ -35,11 +35,13 @@ export interface IProjectCreationAttributes {
  * @property {string} groupBy - The column to group tasks
  * @property {string} sortBy - The column to sort tasks
  * @property {string} sortDir - The sort direction, Asc or Desc
+ * @property {boolean} showCompleted - Show / hide completed tasks
  */
 export interface IProjectUpdateAttributes extends Omit<IProjectCreationAttributes, 'aboveProject' | 'belowProject'> {
     groupBy?: string;
     sortBy?: string;
     sortDir?: string;
+    showCompleted?: boolean;
 }
 
 /**
@@ -57,6 +59,7 @@ export interface IProjectUpdateAttributes extends Omit<IProjectCreationAttribute
  * @property {string} groupBy - The column to group tasks
  * @property {string} sortBy - The column to sort tasks
  * @property {string} sortDir - The sort direction, Asc or Desc
+ * @property {boolean} showCompleted - Show / hide completed tasks
  */
 export interface IProjectAttribute extends IProjectUpdateAttributes {
     id: number;
@@ -75,6 +78,7 @@ export class ProjectModel extends Model<IProjectAttribute, IProjectCreationAttri
     public groupBy?: string | undefined;
     public sortBy?: string | undefined;
     public sortDir = 'Asc';
+    public showCompleted = false;
 
     public readonly users?: IUserProjectInfo[];
     public readonly comments?: CommentModel[];
@@ -119,6 +123,11 @@ ProjectModel.init(
             type: DataTypes.STRING(10),
             allowNull: false,
             defaultValue: 'Asc'
+        },
+        showCompleted: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: false
         }
     }, {
     tableName: PROJECTS_TABLE,
