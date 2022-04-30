@@ -27,45 +27,12 @@ export interface ISectionRepository {
 
 class SectionRepository implements ISectionRepository {
     constructor(private projectRepo: IProjectRepository, private taskRepo: ITaskRepository) { }
-    private getCommonInclude(userId: string): Includeable[] {
-        return [{
-            model: TaskModel,
-            as: SectionTaskAssociation.as,
-            attributes: {
-                include: [
-                    [
-                        Sequelize.literal(`(
-                        SELECT ${getKey<TaskSubTaskModel>('taskId')}
-                        FROM ${TaskSubTaskModel.tableName}
-                        WHERE ${getKey<TaskSubTaskModel>('taskId')} = ${SectionTaskAssociation.as}.${getKey<TaskModel>('id')}
-                        )`), 'parentTaskId'
-                    ]
-                ]
-            }
-        },
-        {
-            model: ProjectModel,
-            as: SectionProjectAssociation.as,
-            required: true,
-            include: [{
-                model: UserModel,
-                required: true,
-                where: {
-                    id: userId
-                },
-                as: ProjectUserAssociation.as,
-                attributes: []
-            }],
-            attributes: []
-        }
-        ];
-    }
+
     async getSections(userId: string, projectId: number): Promise<SectionModel[]> {
         return SectionModel.findAll({
             where: {
                 projectId: projectId,
-            },
-            include: this.getCommonInclude(userId)
+            }
         });
     }
 
@@ -74,8 +41,7 @@ class SectionRepository implements ISectionRepository {
             where: {
                 id: sectId,
                 projectId: projectId,
-            },
-            include: this.getCommonInclude(userId)
+            }
         });
         return sect;
     }
