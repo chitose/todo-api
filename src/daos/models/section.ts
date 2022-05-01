@@ -11,6 +11,7 @@ import { autoIncrementIdColumn } from './columns';
  * @property {string} name - The section name
  * @property {number} order - The section order
  * @property {number} projectId - The parent project's id
+ * @property {boolean} open - The open or collapse state of the section
  * @property {array<Task>} tasks - The section's tasks
  */
 export interface ISectionAttribute {
@@ -18,6 +19,7 @@ export interface ISectionAttribute {
     name: string;
     projectId: number;
     order: number;
+    open: boolean;
 }
 
 /**
@@ -26,14 +28,20 @@ export interface ISectionAttribute {
  * @property {string} name - The section name
  * @property {number} order - The section order
  * @property {number} projectId - The parent project's id
+ * @property {number} aboveSection - Insert section above specified section
+ * @property {number} belowSectin - Insert section below specified section
  */
-export interface ISectionCreationAttribute extends Omit<ISectionAttribute, 'id'> { }
+export interface ISectionCreationAttribute extends Omit<ISectionAttribute, 'id'> {
+    aboveSection?: number;
+    belowSection?: number;
+}
 
 export class SectionModel extends Model<ISectionAttribute, ISectionCreationAttribute> implements ISectionAttribute {
     public id!: number;
     public name!: string;
     public projectId!: number;
     public order!: number;
+    public open!: boolean;
 
     public readonly tasks?: TaskModel[];
 
@@ -62,6 +70,11 @@ SectionModel.init(
         order: {
             type: DataTypes.INTEGER,
             allowNull: false
+        },
+        open: {
+            type: DataTypes.BOOLEAN,
+            allowNull: false,
+            defaultValue: true
         }
     },
     {

@@ -9,7 +9,7 @@ import { getUserRepository, IUserAttribute } from './daos';
 
 logger.info(`Environment: ${String(process.env.NODE_ENV)}`);
 logger.info('Synchronizing database...');
-db.sync({ force: false }).then(() => {
+db.sync({ force: true }).then(() => {
     logger.info('Database is synchronized.');
     // Start the server
     const port = Number(process.env.PORT || 3000);

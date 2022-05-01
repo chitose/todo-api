@@ -347,15 +347,15 @@ export class ProjectRouteUrlBuilder {
     }
 
     public createSection(id?: string | number) {
-        return `${this.getProjectById(id)}/section`;
+        return `${this.getProjectById(id)}/sections`;
     }
 
     public getSections(projectId?: number | string) {
-        return `${this.getProjectById(projectId)}/section`;
+        return `${this.getProjectById(projectId)}/sections`;
     }
 
     public getSection(projectId?: number | string, sectId?: number | string) {
-        return `${this.getProjectById(projectId)}/section/${sectId ? sectId : ':' + getKey<RouteParams>('sectionId')}`;
+        return `${this.getProjectById(projectId)}/sections/${sectId ? sectId : ':' + getKey<RouteParams>('sectionId')}`;
     }
 
     public updateSection(projId?: string | number, sectionId?: string | number) {

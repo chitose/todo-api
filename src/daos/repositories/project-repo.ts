@@ -80,7 +80,8 @@ class ProjectRepository implements IProjectRepository {
                 const dupSect = await SectionModel.create({
                     name: sect.name,
                     projectId: dupProj!.id,
-                    order: sect.order
+                    order: sect.order,
+                    open: sect.open
                 });
                 sectionMap.set(sect.id, dupSect.id);
             }

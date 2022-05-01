@@ -10,7 +10,7 @@ import { RouteParams } from './route-params';
 const sectionRepo = getSectionRepository();
 
 /**
- * GET /api/projects/{projectId}/section
+ * GET /api/projects/{projectId}/sections
  * @summary Get project's sections
  * @param {number} projectId.path.required - The project id
  * @return {array<Section>} 200 - success response
@@ -24,7 +24,7 @@ export async function getSections(req: Request, res: Response) {
 }
 
 /**
- * GET /api/projects/{projectId}/section/{sectionId}
+ * GET /api/projects/{projectId}/sections/{sectionId}
  * @summary Get a single section info
  * @param {number} projectId.path.required - The project id
  * @return {Section} 200 - success response
@@ -38,7 +38,7 @@ export async function getSection(req: Request, res: Response) {
 }
 
 /**
- * POST /api/projects/{projectId}/section/{sectionId}/swap/{targetSectionId}
+ * POST /api/projects/{projectId}/sections/{sectionId}/swap/{targetSectionId}
  * @summary Swap section order
  * @param {number} projectId.path.required - The project id
  * @param {number} sectionId.path.required - The source section id
@@ -58,7 +58,7 @@ export async function swapSectionOrder(req: Request, res: Response) {
 }
 
 /**
- * PUT /api/projects/{projectId}/section
+ * PUT /api/projects/{projectId}/sections
  *
  * @summary Create a new section
  * @param {number} projectId.path.required - The project id
@@ -71,7 +71,7 @@ export async function createSection(req: Request, res: Response) {
     const user = req.user as IUserAttribute;
     const json = req.body as Partial<ISectionCreationAttribute>;
     try {
-        const sect = await sectionRepo.addSection(user.id, projectId, json.name!);
+        const sect = await sectionRepo.addSection(user.id, projectId, json.name!, json.aboveSection, json.belowSection);
         return res.status(StatusCodes.CREATED).json(sect);
     } catch (e: any) {
         return res.status(StatusCodes.BAD_REQUEST).send({
@@ -81,7 +81,7 @@ export async function createSection(req: Request, res: Response) {
 }
 
 /**
- * POST /api/projects/{projectId}/section/{sectionId}
+ * POST /api/projects/{projectId}/sections/{sectionId}
  *
  * @summary Update section info
  * @param {number} projectId.path.required - The project id
@@ -105,7 +105,7 @@ export async function updateSection(req: Request, res: Response) {
 }
 
 /**
- * DELETE /api/projects/{projectId}/section/{sectionId}
+ * DELETE /api/projects/{projectId}/sections/{sectionId}
  *
  * @summary Delete a section
  * @param {number} projectId.path.required - The project id
@@ -128,7 +128,7 @@ export async function deleteSection(req: Request, res: Response) {
 }
 
 /**
- * POST /api/projects/{projectId}/section/{sectionId}/duplicate
+ * POST /api/projects/{projectId}/sections/{sectionId}/duplicate
  *
  * @summary Dupliate a section
  * @param {number} projectId.path.required - The project id

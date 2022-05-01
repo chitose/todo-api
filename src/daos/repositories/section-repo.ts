@@ -1,4 +1,4 @@
-import { ISectionCreationAttribute, SectionModel, SectionProjectAssociation } from '@daos/models/section';
+import { ISectionAttribute, ISectionCreationAttribute, SectionModel, SectionProjectAssociation } from '@daos/models/section';
 import { getKey } from '@shared/utils';
 import { Includeable, Op, Sequelize } from 'sequelize/dist';
 
@@ -17,7 +17,7 @@ import { ITaskRepository } from './task-repo';
 export interface ISectionRepository {
     getSections(userId: string, projectId: number): Promise<SectionModel[]>;
     getSection(userId: string, projectId: number, sectId: number): Promise<SectionModel | null>;
-    addSection(userId: string, projId: number, name: string): Promise<SectionModel>;
+    addSection(userId: string, projId: number, name: string, aboveSection?: number, belowSection?: number): Promise<SectionModel>;
     updateSection(userId: string, projId: number, sectId: number, prop: Partial<ISectionCreationAttribute>): Promise<SectionModel>;
     deleteSection(userId: string, projId: number, sectId: number): Promise<void>;
     duplicateSection(userId: string, projId: number, sectId: number): Promise<SectionModel | undefined>;
@@ -32,7 +32,8 @@ class SectionRepository implements ISectionRepository {
         return SectionModel.findAll({
             where: {
                 projectId: projectId,
-            }
+            },
+            order: [getKey<ISectionAttribute>('order')]
         });
     }
 
@@ -87,20 +88,44 @@ class SectionRepository implements ISectionRepository {
         }
     }
 
-    async addSection(userId: string, projId: number, name: string): Promise<SectionModel> {
+    async addSection(userId: string, projId: number, name: string, aboveSection?: number, belowSection?: number): Promise<SectionModel> {
         await this.assertProjectCollaborator(userId, projId);
-        const maxOrder = await SectionModel.max<number, SectionModel>('order', {
-            where: {
-                projectId: {
-                    [Op.eq]: projId
-                }
+        let newOrder = -1;
+        if (aboveSection) {
+            const targetSection = await SectionModel.findOne({ where: { id: aboveSection } });
+            // get all projects with order <= aboveProject
+            const aboveSects = await SectionModel.findAll({ where: { order: { [Op.lt]: targetSection?.order } } });
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            newOrder = targetSection!.order - 1;
+            for (const s of aboveSects) {
+                await SectionModel.update({ order: s.order - 1 }, { where: { id: s.id } });
             }
-        });
+        } else if (belowSection) {
+            const targetSection = await SectionModel.findOne({ where: { id: belowSection } });
+            // get all projects with order > belowProject
+            const belowSections = await SectionModel.findAll({ where: { order: { [Op.gt]: targetSection?.order } } });
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            newOrder = targetSection!.order + 1;
+            for (const s of belowSections) {
+                await SectionModel.update({ order: s.order + 1 }, { where: { id: s.id } });
+            }
+        } else {
+
+            const maxOrder = await SectionModel.max<number, SectionModel>('order', {
+                where: {
+                    projectId: {
+                        [Op.eq]: projId
+                    }
+                }
+            });
+            newOrder = (maxOrder || 0) + 1;
+        }
 
         return SectionModel.create({
             projectId: projId,
             name: name,
-            order: (maxOrder || 0) + 1
+            order: newOrder,
+            open: true
         });
     }
 
@@ -108,7 +133,7 @@ class SectionRepository implements ISectionRepository {
         await this.assertProjectCollaborator(userId, projId);
 
         const updateProp = {} as Partial<ISectionCreationAttribute>;
-        const { name, order, projectId } = prop;
+        const { name, order, projectId, open } = prop;
         if (name !== undefined) {
             updateProp.name = name;
         }
@@ -118,6 +143,10 @@ class SectionRepository implements ISectionRepository {
 
         if (projectId !== undefined) {
             updateProp.projectId = projectId;
+        }
+
+        if (open !== undefined) {
+            updateProp.open = open;
         }
 
         await SectionModel.update(updateProp, {
